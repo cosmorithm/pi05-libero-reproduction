@@ -1,0 +1,22 @@
+# Secrets and tokens
+.dashboard_token
+
+# Virtual environment and downloaded artifacts
+.venv/
+assets/
+cache/
+checkpoints/
+datasets/
+home/
+lerobot/
+lerobot-*.tar.gz
+
+# Runtime output
+logs/
+outputs/
+
+# Python and editor artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
