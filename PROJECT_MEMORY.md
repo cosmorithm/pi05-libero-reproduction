@@ -61,6 +61,8 @@
 - 2026-10-17 第一次真实 Pi0.5 闭环成功：task 0 指令为“pick up the black bowl between the plate and the ramekin and place it on the plate”；模型在第 73/280 步完成，reward 1.0、success true、1/1 episode，rollout wall time 8.081 秒，进程 exit code 0。按日志时间戳，首次冷启动从进程启动到结束约 2 分 14 秒，大部分时间用于 CPU 侧模型构建和权重映射。
 - 2026-10-17 Web 控制台 π0.5 模式完成：`scripts/pi05_episode.py` 使用 LeRobot `PI05Policy` 执行真实动作，同时采集两路策略相机和五路 MuJoCo 观察相机，逐帧写入 7 个 H.264 256×256 MP4。通过 `/api/run` 的 `action_mode=pi05` 启动完整 `libero_spatial` task 0、seed 7、280 步 episode 后再次成功，74 个动作步、reward 1.0、success true、7/7 路视频有效。本次模型加载 117.95 秒，首帧推理 0.446 秒，动作队列后续步约 0.006 秒。
 - 2026-10-17 控制台日志中的访问 token 已脱敏；新版日志记录为 `[REDACTED]`，启动信息不再打印完整 token。
+- 2026-10-17 正式基线 runner：`scripts/benchmark_libero.py` 使用 `lerobot-eval` 固定 seed 1000、batch size 1、`n_action_steps=10`、`compile_model=false`、硬重置和 256×256 观测。支持 suite 级断点续跑、`--task-ids` smoke、`--dry-run`、`--force`，结果汇总到 `outputs/benchmark/pi05-libero/summary.{json,csv,md}`。smoke `libero_spatial` task 0、seed 7、1 episode 已通过；完整四套 400 episode 基线正在后台执行。
+- 2026-10-17 夜间编排脚本：`scripts/run_overnight_benchmark.sh` 等待短 Spatial 前台任务结束后自动运行全部四套 suite，日志写入 `logs/benchmark-overnight.log`。
 - 评测期间观察到 GPU 显存约 10,417 MiB。输出位于 `outputs/eval/pi05-libero_spatial-task0-seed7/`：`eval_info.json`、`run.log` 和 H.264 256×256 主视角视频。视频 74 帧、80 fps、0.925 秒回放。
 
 ## 环境使用
@@ -85,8 +87,7 @@ cat outputs/smoke/report.json
 
 ## 下一步
 
-1. 将 π0.5 模式改为常驻模型 worker，避免每次通过控制台启动时重复约两分钟冷启动。
-2. 给控制台增加七路录像回放或下载入口，并继续完善模型加载/推理延迟的结构化统计。
-3. 扩展到 3 个任务、每任务多个 episode/seed，得到小规模可信基线。
-4. 再决定是否下载训练数据并做 24GB 显存下的参数高效微调。
+1. 等待四套 LIBERO 基线完成后，核对 Spatial/Object/Goal/10 与官方平均 97.5% 的差距，并保存完整结果表。
+2. 给控制台增加七路录像回放或下载入口，并把 π0.5 模式改为常驻模型 worker，避免每次冷启动。
+3. 再决定是否增加 3 个 seed 平均、下载训练数据并做 24GB 显存下的参数高效微调。
 

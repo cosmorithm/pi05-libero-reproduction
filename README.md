@@ -6,7 +6,7 @@
 /root/autodl-tmp/pi05-libero-reproduction
 ```
 
-当前阶段已完成仿真部署、七视角可视化、Pi0.5 LIBERO 微调权重与 tokenizer 缓存，并已完成第一次真实单任务闭环评测；尚未下载训练数据或启动微调。
+当前阶段已完成仿真部署、七视角可视化、真实 π0.5 Web 控制、Pi0.5 LIBERO 微调权重与 tokenizer 缓存，并已完成第一次真实单任务闭环评测；正式四套 LIBERO 基线正在运行，尚未下载训练数据或启动微调。
 
 ## 当前状态
 
@@ -17,9 +17,10 @@
 - `pip check`：无依赖冲突
 - LIBERO assets：586/586 个文件校验通过，位于 `assets/`
 - smoke test：`libero_spatial` task 0 完成 reset、多步动作和 EGL 无头渲染，生成全部 7 路 256×256 RGB 相机画面
-- Web 控制台 v2：正在 6006 端口运行，可从 SeetaCloud 自定义服务域名访问
+- Web 控制台 v3：正在 6006 端口运行，支持 `idle`、`demo` 和真实 π0.5 模式，可从 SeetaCloud 自定义服务域名访问
 - Pi0.5 checkpoint：`lerobot/pi05_libero_finetuned`，固定 revision `7152f13e34c6c115d808aea0e5d08aca74eac14b`，服务器端镜像下载已完成并验证
 - 第一次真实评测：`libero_spatial` task 0、seed 7，1/1 episode 成功，模型在第 73 步完成任务
+- Benchmark smoke：`libero_spatial` task 0、seed 7，1/1 episode 成功，runner 结果和汇总链路通过
 
 ## 登录
 
@@ -210,6 +211,89 @@ outputs/eval/pi05-libero_spatial-task0-seed7/videos/libero_spatial_0/eval_episod
 
 本次 MP4 采用 LIBERO 的 80 fps 元数据，因此 74 个仿真帧被压缩为约 0.925 秒回放；日志中的 8.081 秒是 rollout wall time。第一次进程从 04:07:00 左右启动，04:09:14 结束，总冷启动约 2 分 14 秒，其中大部分发生在 CPU 侧构建模型和映射权重。视频时长、rollout 时间和首次冷启动总时间是三个不同概念。
 
+## 正式 LIBERO 基线评测
+
+`scripts/benchmark_libero.py` 使用官方 `lerobot-eval` 运行四套标准 LIBERO 基线：
+
+- `libero_spatial`
+- `libero_object`
+- `libero_goal`
+- `libero_10`
+
+每个 suite 包含 10 个 task，每个 task 默认评测 10 episodes。固定协议为：
+
+```text
+policy=lerobot/pi05_libero_finetuned
+seed=1000
+batch_size=1
+n_action_steps=10
+compile_model=false
+control_mode=relative
+observation=2 x 256x256 RGB + 8D state
+init_states=true
+hard_reset=true
+```
+
+先跑最小 smoke：
+
+```bash
+cd /root/autodl-tmp/pi05-libero-reproduction
+./.venv/bin/python scripts/benchmark_libero.py \
+  --suites libero_spatial \
+  --task-ids 0 \
+  --n-episodes 1 \
+  --seed 7 \
+  --output-root outputs/benchmark/pi05-libero-smoke
+```
+
+运行单个 suite：
+
+```bash
+./.venv/bin/python scripts/benchmark_libero.py \
+  --suites libero_spatial \
+  --n-episodes 10 \
+  --seed 1000 \
+  --output-root outputs/benchmark/pi05-libero
+```
+
+运行全部四套标准 suite：
+
+```bash
+./.venv/bin/python scripts/benchmark_libero.py \
+  --suites libero_spatial,libero_object,libero_goal,libero_10 \
+  --n-episodes 10 \
+  --seed 1000 \
+  --output-root outputs/benchmark/pi05-libero
+```
+
+runner 会跳过已经存在 `eval_info.json` 的 suite。需要强制重跑时添加 `--force`。
+
+输出结构：
+
+```text
+outputs/benchmark/pi05-libero/
+├── status.json
+├── summary.json
+├── summary.csv
+├── summary.md
+└── <suite>/
+    ├── command.txt
+    ├── metadata.json
+    ├── run.log
+    ├── eval_info.json
+    └── videos/
+```
+
+`summary.md` 是给人查看的结果表，`summary.csv` 用于后续统计或绘图，`summary.json` 保存完整结构化结果。正式评测结果应当同时记录 policy path、Git commit、seed 和评测协议，避免之后无法复现。
+
+夜间自动续跑：
+
+```bash
+screen -dmS pi05-overnight bash scripts/run_overnight_benchmark.sh
+```
+
+该脚本会等待较短的 Spatial 前台任务结束后继续运行四套 suite，适合作为长时间无人值守任务。
+
 ### 2026-10-17 兼容性审计记录
 
 本次没有直接下载最大的基础权重，而是先通过服务器端 Hugging Face API 读取两个候选仓库的 revision、文件列表和精确体积：
@@ -345,9 +429,9 @@ SUITE=libero_object TASK_ID=2 SEED=1000 N_EPISODES=1 \
 
 ### 当前边界
 
-- 现有 Web 控制台的 `idle/demo` 仍是手工生成动作，不是 Pi0.5。
+- 现有 Web 控制台同时支持 `idle`、`demo` 和真实 π0.5 模式。
 - 官方 `lerobot-eval` 会输出主视角评测 MP4；现有七视角网页是独立的人类监控链路。
-- 单任务策略评测已经通过；下一次工程改动将把 Pi0.5 动作流、评测状态和七视角录制合并到控制台。
+- 单任务策略评测和七视角 π0.5 控制已经通过；正式多任务基线评测使用独立的 benchmark runner。
 - 官方全量训练示例按单张 80GB GPU 设计。RTX 4090D 24GB 已验证 batch size 1 推理，观察显存约 10.4GB；微调仍必须另行验证冻结范围、梯度检查点、batch size、累积步数和显存峰值。
 
 ## 安装或修复
@@ -371,10 +455,9 @@ cd /root/autodl-tmp/pi05-libero-reproduction
 ## 尚未执行
 
 - 未下载 LIBERO 演示/训练数据
-- 未运行多任务、多 episode、多 seed 的正式统计评测
 - 未运行 Pi0.5 微调或训练
 
-Pi0.5 单任务真实推理已经跑通。下一阶段应先把策略模式和七视角录像接入 Web 控制台，再做小规模多任务基线；训练数据与微调放在基线之后。
+Pi0.5 单任务真实推理和七视角 Web 控制已经跑通。正式四套 LIBERO 基线评测正在按 `seed=1000`、每 task 10 episodes 执行；多 seed 平均和微调放在基线之后。
 
 ## 工作记录
 
