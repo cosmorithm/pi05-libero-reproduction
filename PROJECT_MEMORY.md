@@ -20,6 +20,7 @@
 - pip 缓存：`/root/autodl-tmp/pi05-libero-reproduction/cache/pip`
 - LIBERO 资产：`/root/autodl-tmp/pi05-libero-reproduction/assets`
 - 输出目录：`/root/autodl-tmp/pi05-libero-reproduction/outputs`
+- 项目根目录已初始化服务器本地 Git（分支 `main`）。仓库只跟踪 README、PROJECT_MEMORY、固定 LeRobot commit 和 `scripts/`；`.venv`、权重、资产、缓存、日志、输出和 `.dashboard_token` 均被忽略。每次代码或文档改动都应先验证再在服务器提交。
 
 ## 已执行事项
 
@@ -48,7 +49,7 @@
 - 当前没有安装、下载或训练进程；`screen` 会话 `libero-web` 正在提供 6006 Web 服务。关机不会丢失项目，但再次开机后需要重启该服务。
 - 安装日志：`logs/setup.log`；smoke 日志：`logs/smoke.log`。
 - 结构化结果：`outputs/smoke/report.json`、`outputs/smoke/progress.json`；图像：`outputs/smoke/image.png` 至 `image7.png`。
-- Web 控制台 v2：`scripts/libero_dashboard.py`，监听 6006，使用项目根目录 `.dashboard_token` 鉴权；展示 LIBERO 场景全部 7 路相机、任务语言、实时步数、演示动作和 GPU 遥测。控制区位于相机上方，相机卡片可选紧凑/标准/大图并响应式排列。启动脚本为 `scripts/start_dashboard.sh`，运行日志为 `logs/dashboard.log`，单次仿真日志为 `logs/dashboard-run.log`。
+- Web 控制台 v3：`scripts/libero_dashboard.py`，监听 6006，使用项目根目录 `.dashboard_token` 鉴权；展示 LIBERO 场景全部 7 路相机、任务语言、实时步数、动作模式和 GPU 遥测。控制区位于相机上方，相机卡片可选紧凑/标准/大图并响应式排列。启动脚本为 `scripts/start_dashboard.sh`，运行日志为 `logs/dashboard.log`，单次仿真日志为 `logs/dashboard-run.log`。
 - 公网入口基址：`https://u580081-955c-15394eb1.westb.seetacloud.com:8443/`，访问时追加 `.dashboard_token`，不要在文档内保存真实 token。
 - LeRobot 保持两路策略输入不变；额外 `galleryview`、`birdview`、`frontview`、`sideview`、`robot0_robotview` 从底层 MuJoCo 状态直接渲染，仅用于人类观察。五路直渲染画面已按 OpenGL 坐标约定做垂直翻转。
 - 2026-10-17 公网验证：控制台 v2 健康检查、首页、鉴权 API、7 个 PNG 端点均为 HTTP 200；从公网启动 12 步 demo episode 成功，7 路画面无黑屏、无重复且方向正常。
@@ -58,6 +59,8 @@
 - 用户已通过 Hugging Face device OAuth 登录，镜像账号为 `yuhengchen`。`google/paligemma-3b-pt-224` revision `35e4f46485b4d07967e7e9935bc3786aad50687c` 的 tokenizer 文件已缓存；离线加载验证为 `GemmaTokenizer`、词表 257,152，任务文本编码/还原正常。
 - `scripts/eval_pi05_single.sh` 默认运行 `libero_spatial` task 0、seed 7、单 episode；固定 256×256 观测、相对控制、`n_action_steps=10`、关闭 `torch.compile`，结果写入 `outputs/eval/`。脚本已改为优先检查 tokenizer 离线缓存，只有缓存缺失才要求 HF 登录。
 - 2026-10-17 第一次真实 Pi0.5 闭环成功：task 0 指令为“pick up the black bowl between the plate and the ramekin and place it on the plate”；模型在第 73/280 步完成，reward 1.0、success true、1/1 episode，rollout wall time 8.081 秒，进程 exit code 0。按日志时间戳，首次冷启动从进程启动到结束约 2 分 14 秒，大部分时间用于 CPU 侧模型构建和权重映射。
+- 2026-10-17 Web 控制台 π0.5 模式完成：`scripts/pi05_episode.py` 使用 LeRobot `PI05Policy` 执行真实动作，同时采集两路策略相机和五路 MuJoCo 观察相机，逐帧写入 7 个 H.264 256×256 MP4。通过 `/api/run` 的 `action_mode=pi05` 启动完整 `libero_spatial` task 0、seed 7、280 步 episode 后再次成功，74 个动作步、reward 1.0、success true、7/7 路视频有效。本次模型加载 117.95 秒，首帧推理 0.446 秒，动作队列后续步约 0.006 秒。
+- 2026-10-17 控制台日志中的访问 token 已脱敏；新版日志记录为 `[REDACTED]`，启动信息不再打印完整 token。
 - 评测期间观察到 GPU 显存约 10,417 MiB。输出位于 `outputs/eval/pi05-libero_spatial-task0-seed7/`：`eval_info.json`、`run.log` 和 H.264 256×256 主视角视频。视频 74 帧、80 fps、0.925 秒回放。
 
 ## 环境使用
@@ -82,8 +85,8 @@ cat outputs/smoke/report.json
 
 ## 下一步
 
-1. 将 Pi0.5 策略运行、真实成功状态和七视角录制接入现有 Web 控制台。
-2. 增加 GPU 遥测和模型加载/推理延迟的结构化记录。
+1. 将 π0.5 模式改为常驻模型 worker，避免每次通过控制台启动时重复约两分钟冷启动。
+2. 给控制台增加七路录像回放或下载入口，并继续完善模型加载/推理延迟的结构化统计。
 3. 扩展到 3 个任务、每任务多个 episode/seed，得到小规模可信基线。
 4. 再决定是否下载训练数据并做 24GB 显存下的参数高效微调。
 

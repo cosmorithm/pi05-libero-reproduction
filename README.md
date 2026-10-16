@@ -69,7 +69,7 @@ cat outputs/smoke/report.json
 
 ## Web 可视化控制台
 
-轻量控制台监听服务器 `0.0.0.0:6006`，通过 SeetaCloud 自定义服务映射访问。它展示场景的全部 7 路相机（策略主视角、腕部、展示广角、俯视、正面、侧面、机器人本体），并支持选择 suite/task/seed/步数、静止或可见运动演示、启动/停止 episode、自然语言任务、实时进度和 GPU 遥测。
+轻量控制台监听服务器 `0.0.0.0:6006`，通过 SeetaCloud 自定义服务映射访问。它展示场景的全部 7 路相机（策略主视角、腕部、展示广角、俯视、正面、侧面、机器人本体），并支持选择 suite/task/seed/步数、静止演示、可见运动演示或 π0.5 真实策略、启动/停止 episode、自然语言任务、实时进度和 GPU 遥测。
 
 公网入口：
 
@@ -102,6 +102,20 @@ screen -S libero-web -X quit
 
 公网 API 和相机帧要求 `?token=<.dashboard_token 内容>`；根页面和 `/healthz` 不包含敏感信息。控制台仅能启动预定义仿真参数，不提供终端或任意命令执行。演示动作只用于观察机械臂运动，不是任务策略，`success=false` 属于正常结果。
 
+### π0.5 真实策略模式
+
+在控制台的动作模式中选择“π0.5 真实策略”并启动后，服务运行 `scripts/pi05_episode.py`。脚本会：
+
+- 加载 `lerobot/pi05_libero_finetuned` 固定 checkpoint；
+- 使用 LeRobot 官方 processor 和 `n_action_steps=10` 执行真实相对控制；
+- 每步更新控制台七路 PNG；
+- 将完整 episode 的七路画面写入 `outputs/pi05_dashboard/<run>/videos/*.mp4`；
+- 在 `report.json` 中记录模型加载时间、首帧/均值/95 分位推理时间、动作轨迹、显存峰值和 success。
+
+真实模式为每次运行加载一次模型，因此首次启动通常需要约两分钟冷启动；加载期间控制台显示 `loading_model` 状态。该模式不会改变 Pi0.5 的两路策略输入结构，另外五路仅用于观察和录像。
+
+已验证 `libero_spatial` task 0、seed 7 的 280 步控制台 episode 再次成功：74 个动作步、`reward=1.0`、`success=true`，七路 H.264 256×256 MP4 均有效。
+
 ### 相机实现说明
 
 LeRobot 的 Pi0.5/LIBERO 接口仍然只接收 `agentview` 和 `robot0_eye_in_hand` 两路策略观测，没有被 Web UI 改动。其余五路只用于人类观察，由脚本从同一个 MuJoCo 状态直接渲染，并将 OpenGL 底部原点翻转为正常的人类观看方向。因此增加监控视角不会改变未来 Pi0.5 的输入结构。
@@ -110,7 +124,7 @@ robosuite 输出的 `No private macro file found` 是可选用户宏配置提示
 
 ### 已验证
 
-- 本机和公网 `/healthz` 返回控制台 `version: 2`
+- 本机和公网 `/healthz` 返回控制台 `version: 3`
 - 公网首页、鉴权状态 API 和 7 个 PNG 接口均返回 HTTP 200
 - 从公网按钮成功启动 12 步 `demo` episode
 - 任务语言、实时进度、最终报告和全部相机画面成功更新
