@@ -39,10 +39,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=1000)
     parser.add_argument("--policy-path", type=Path, default=DEFAULT_POLICY_PATH)
     parser.add_argument("--output-root", type=Path, default=DEFAULT_OUTPUT_ROOT)
+    parser.add_argument("--task-ids", help="Comma-separated task IDs to restrict evaluation")
+    parser.add_argument("--smoke", action="store_true", help="Restrict to task 0, one episode, seed 7")
     parser.add_argument("--force", action="store_true", help="Rerun suites with existing results")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     args.suite_list = [part.strip() for part in args.suites.split(",") if part.strip()]
+    args.task_id_list = (
+        [int(part.strip()) for part in args.task_ids.split(",") if part.strip()]
+        if args.task_ids
+        else None
+    )
+    if args.smoke:
+        args.task_id_list = [0]
+        args.n_episodes = 1
+        args.seed = 7
     unknown = [suite for suite in args.suite_list if suite not in STANDARD_SUITES]
     if unknown:
         parser.error(f"unsupported suite(s): {', '.join(unknown)}")
@@ -144,8 +155,9 @@ def build_eval_command(
     policy_path: Path,
     n_episodes: int,
     seed: int,
+    task_ids: list[int] | None,
 ) -> list[str]:
-    return [
+    command = [
         str(ROOT / ".venv/bin/lerobot-eval"),
         f"--output_dir={suite_dir}",
         "--env.type=libero",
@@ -167,6 +179,9 @@ def build_eval_command(
         f"--seed={seed}",
         f"--job_name=pi05-baseline-{suite}",
     ]
+    if task_ids is not None:
+        command.append(f"--env.task_ids={json.dumps(task_ids)}")
+    return command
 
 
 def update_status(status_path: Path, **changes: Any) -> None:
@@ -194,7 +209,14 @@ def run_suite(
         return eval_info
 
     suite_dir.mkdir(parents=True, exist_ok=True)
-    command = build_eval_command(suite, suite_dir, args.policy_path, args.n_episodes, args.seed)
+    command = build_eval_command(
+        suite,
+        suite_dir,
+        args.policy_path,
+        args.n_episodes,
+        args.seed,
+        args.task_id_list,
+    )
     command_text = shlex.join(command)
     (suite_dir / "command.txt").write_text(command_text + "\n", encoding="utf-8")
     write_json_atomic(
@@ -203,6 +225,7 @@ def run_suite(
             "suite": suite,
             "n_episodes": args.n_episodes,
             "seed": args.seed,
+            "task_ids": args.task_id_list,
             "policy_path": str(args.policy_path),
             "policy_weights_bytes": (args.policy_path / "model.safetensors").stat().st_size,
             "git_commit": git_head(),
@@ -374,6 +397,8 @@ def main() -> None:
     print(f"  policy: {args.policy_path}")
     print(f"  suites: {', '.join(args.suite_list)}")
     print(f"  seed:   {args.seed}")
+    if args.task_id_list is not None:
+        print(f"  tasks:  {args.task_id_list}")
     print(f"  output: {args.output_root}")
 
     preflight(args.policy_path, environment)
@@ -385,6 +410,7 @@ def main() -> None:
         suites=args.suite_list,
         n_episodes=args.n_episodes,
         seed=args.seed,
+        task_ids=args.task_id_list,
         policy_path=str(args.policy_path),
         git_commit=git_head(),
     )
