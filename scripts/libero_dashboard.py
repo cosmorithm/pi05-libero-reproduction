@@ -32,6 +32,13 @@ SUITES = {
     "libero_10": 10,
     "libero_90": 90,
 }
+SUITE_MAX_STEPS = {
+    "libero_spatial": 280,
+    "libero_object": 280,
+    "libero_goal": 300,
+    "libero_10": 520,
+    "libero_90": 400,
+}
 
 INDEX_HTML = r"""<!doctype html>
 <html lang="zh-CN">
@@ -54,23 +61,24 @@ INDEX_HTML = r"""<!doctype html>
   </style>
 </head>
 <body><main class="shell">
-  <header><div><div class="eyebrow">Pi0.5 Reproduction · All Camera Monitor</div><h1 class="title">LIBERO Observation Deck</h1><p class="subtitle">7 路 MuJoCo 相机 · 任务状态 · GPU 遥测</p></div><div class="connection"><i id="dot" class="dot"></i><span id="connection">正在连接</span></div></header>
+  <header><div><div class="eyebrow">Pi0.5 Reproduction · All Camera Monitor</div><h1 class="title">LIBERO Observation Deck</h1><p class="subtitle">7 路 MuJoCo 相机 · π0.5 策略 · GPU 遥测</p></div><div class="connection"><i id="dot" class="dot"></i><span id="connection">正在连接</span></div></header>
   <section class="card mission"><div><small>Current language instruction</small><h2 id="instruction">运行仿真后显示当前任务指令</h2></div><div id="missionTag" class="pill">NO ACTIVE EPISODE</div></section>
   <div class="progress-wrap"><span id="phase" class="progress-state">等待运行</span><div class="track"><div id="bar" class="bar"></div></div><span id="stepCount">0 / 0</span></div>
   <section class="lower">
     <article class="card controls"><h2 class="section-title"><span>运行设置</span><span class="pill">20 Hz</span></h2><div class="fields">
       <label>任务集合<select id="suite"><option>libero_spatial</option><option>libero_object</option><option>libero_goal</option><option>libero_10</option><option>libero_90</option></select></label>
       <label>Task ID<input id="task" type="number" min="0" max="9" value="0"></label>
-      <label>动作模式<select id="actionMode"><option value="demo">可视化演示动作</option><option value="idle">静止 / 接口检查</option></select></label>
+      <label>动作模式<select id="actionMode"><option value="pi05">π0.5 真实策略</option><option value="demo">可视化演示动作</option><option value="idle">静止 / 接口检查</option></select></label>
       <label>随机种子<input id="seed" type="number" min="0" value="7"></label>
       <label>仿真步数<input id="steps" type="number" min="1" max="1000" value="80"></label>
     </div><div class="buttons"><button id="run">运行可视化</button><button id="stop" class="danger">停止</button><button id="refresh" class="secondary">刷新</button></div>
-    <p class="hint">“演示动作”会让末端执行器做小幅循环运动，便于观察全部视角；它不是任务策略，不以完成任务为目标。接入 Pi0.5 后会替换为模型动作。</p></article>
+    <p class="hint">π0.5 模式会加载微调 checkpoint、执行真实模型动作，并将 7 路画面逐帧录制为 MP4。首次运行需要等待模型加载。</p></article>
     <article class="card telemetry"><h2 class="section-title"><span>运行状态</span><span id="elapsed" class="pill">—</span></h2><div class="metrics">
       <div class="metric"><span>Episode</span><strong id="state">READY</strong></div><div class="metric"><span>Suite / Task</span><strong id="active">—</strong></div>
       <div class="metric"><span>GPU</span><strong id="gpu">—</strong></div><div class="metric"><span>VRAM / Temp</span><strong id="vram">—</strong></div>
       <div class="metric"><span>Reward</span><strong id="reward">—</strong></div><div class="metric"><span>Success</span><strong id="success">—</strong></div>
       <div class="metric"><span>Action</span><strong id="mode">—</strong></div><div class="metric"><span>Runtime</span><strong id="runtime">—</strong></div>
+      <div class="metric"><span>Model Load</span><strong id="modelLoad">—</strong></div><div class="metric"><span>Inference</span><strong id="inference">—</strong></div>
     </div><div id="friendly" class="friendly">服务准备就绪。选择参数后点击“运行可视化”。</div><details><summary>技术日志（一般不需要查看）</summary><pre id="log">暂无日志</pre></details></article>
   </section>
   <div class="gallery-head"><h2>全部相机视角</h2><label class="size-control">画面大小<select id="viewSize"><option value="220">紧凑</option><option value="290" selected>标准</option><option value="400">大图</option></select></label></div>
@@ -87,14 +95,17 @@ INDEX_HTML = r"""<!doctype html>
 <script>
   const q=new URLSearchParams(location.search);let token=q.get('token')||localStorage.getItem('liberoToken')||'';if(q.get('token'))localStorage.setItem('liberoToken',token);
   const api=p=>`${p}?token=${encodeURIComponent(token)}`,el=id=>document.getElementById(id);let lastStamp='';const cams=['','2','3','4','5','6','7'];
-  el('suite').addEventListener('change',()=>{el('task').max=el('suite').value==='libero_90'?89:9});
+  const maxSteps={libero_spatial:280,libero_object:280,libero_goal:300,libero_10:520,libero_90:400};
+  const syncStepLimit=()=>{const suite=el('suite').value,mode=el('actionMode').value;el('task').max=suite==='libero_90'?89:9;if(mode==='pi05'){el('steps').max=maxSteps[suite]||280;if(el('steps').value==='80')el('steps').value=maxSteps[suite]||280}else{el('steps').max=1000}};
+  el('suite').addEventListener('change',syncStepLimit);el('actionMode').addEventListener('change',syncStepLimit);
+  syncStepLimit();
   const savedSize=localStorage.getItem('liberoViewSize')||'290';el('viewSize').value=savedSize;el('cameraGrid').style.setProperty('--camera-min',`${savedSize}px`);el('viewSize').addEventListener('change',event=>{const size=event.target.value;localStorage.setItem('liberoViewSize',size);el('cameraGrid').style.setProperty('--camera-min',`${size}px`)});
-  function friendlyText(d,p,r){if(d.error)return `运行失败：${d.error}`;if(d.running&&p.phase==='initializing')return '正在创建 MuJoCo 场景、加载初始状态和 7 路相机，通常需要数秒。';if(d.running)return `物理仿真正在推进：第 ${p.current_step||0} / ${p.total_steps||d.request?.steps||0} 步。画面会随相机帧自动更新。`;if(p.phase==='complete')return `本次 episode 已完成 ${p.current_step||r.steps_executed||0} 步。${p.is_success?'任务成功。':'当前是演示动作，没有完成任务是正常结果。'}`;return '服务准备就绪。选择参数后点击“运行可视化”。'}
+  function friendlyText(d,p,r){if(d.error)return `运行失败：${d.error}`;if(d.running&&p.phase==='loading_model')return `正在加载 π0.5 checkpoint 和 processor，通常需要两分钟左右。加载完成后会自动开始 episode。`;if(d.running&&p.phase==='initializing')return '正在创建 MuJoCo 场景、加载初始状态和 7 路相机。';if(d.running&&p.action_mode==='pi05')return `π0.5 正在控制机械臂：第 ${p.current_step||0} / ${p.total_steps||d.request?.steps||0} 步，画面会实时更新。`;if(d.running)return `物理仿真正在推进：第 ${p.current_step||0} / ${p.total_steps||d.request?.steps||0} 步。画面会随相机帧自动更新。`;if(p.phase==='complete'&&p.action_mode==='pi05'){const videoCount=r.video_paths?Object.keys(r.video_paths).length:0;return `π0.5 episode 已完成 ${p.current_step||r.steps_executed||0} 步，${p.is_success?'任务成功':'任务未成功'}，已生成 ${videoCount} 路 MP4 录像。`}if(p.phase==='complete')return `本次 episode 已完成 ${p.current_step||r.steps_executed||0} 步。${p.is_success?'任务成功。':'当前是演示动作，没有完成任务是正常结果。'}`;return '服务准备就绪。选择参数后点击“运行可视化”。'}
   async function status(){try{const response=await fetch(api('/api/status'),{cache:'no-store'});if(!response.ok)throw new Error(response.status===401?'访问 token 无效':`HTTP ${response.status}`);const d=await response.json(),r=d.report||{},p=d.progress||r||{};
-    el('dot').className='dot '+(d.error?'error':'ok');el('connection').textContent=d.running?'SIMULATION RUNNING':'SERVER ONLINE';el('state').textContent=d.running?'RUNNING':(d.error?'ERROR':(p.phase==='complete'?'COMPLETE':'READY'));
+    el('dot').className='dot '+(d.error?'error':'ok');el('connection').textContent=d.running?(p.action_mode==='pi05'?'π0.5 ROLLOUT':'SIMULATION RUNNING'):'SERVER ONLINE';el('state').textContent=d.running?(p.phase==='loading_model'?'LOADING':'RUNNING'):(d.error?'ERROR':(p.phase==='complete'?'COMPLETE':'READY'));
     const suite=p.suite||d.request?.suite||r.suite,task=p.task_id??d.request?.task_id??r.task_id;el('active').textContent=suite?`${suite} / ${task}`:'—';el('missionTag').textContent=suite?`${suite.toUpperCase()} · TASK ${task}`:'NO ACTIVE EPISODE';el('instruction').textContent=p.task_instruction||r.task_instruction||'运行仿真后显示当前任务指令';
-    const current=+(p.current_step??r.steps_executed??0),total=+(p.total_steps??r.steps_requested??0),pct=total?Math.min(100,current/total*100):0;el('bar').style.width=`${pct}%`;el('stepCount').textContent=`${current} / ${total}`;el('phase').textContent=p.phase==='initializing'?'初始化场景':(d.running?'推进物理仿真':(p.phase==='complete'?'Episode 完成':'等待运行'));
-    el('gpu').textContent=d.gpu?`${d.gpu.utilization}%`:'—';el('vram').textContent=d.gpu?`${d.gpu.memory_used} MiB / ${d.gpu.temperature}°C`:'—';el('reward').textContent=p.reward??(Array.isArray(r.reward)?r.reward[0]:'—');const success=p.is_success??(Array.isArray(r.is_success)?r.is_success[0]:null);el('success').textContent=success===null?'—':(success?'YES':'NO');el('mode').textContent=(p.action_mode||r.action_mode||d.request?.action_mode||'—').toUpperCase();el('runtime').textContent=r.duration_seconds?`${r.duration_seconds}s`:'—';
+    const current=+(p.current_step??r.steps_executed??0),total=+(p.total_steps??r.steps_requested??0),pct=total?Math.min(100,current/total*100):0;el('bar').style.width=`${pct}%`;el('stepCount').textContent=`${current} / ${total}`;el('phase').textContent=p.phase==='loading_model'?'加载 π0.5 模型':(p.phase==='initializing'?'初始化场景':(d.running?(p.action_mode==='pi05'?'π0.5 控制仿真':'推进物理仿真'):(p.phase==='complete'?'Episode 完成':'等待运行')));
+    el('gpu').textContent=d.gpu?`${d.gpu.utilization}%`:'—';el('vram').textContent=d.gpu?`${d.gpu.memory_used} MiB / ${d.gpu.temperature}°C`:'—';el('reward').textContent=p.reward??(Array.isArray(r.reward)?r.reward[0]:'—');const success=p.is_success??(Array.isArray(r.is_success)?r.is_success[0]:null);el('success').textContent=success===null?'—':(success?'YES':'NO');el('mode').textContent=((p.action_mode||r.action_mode||d.request?.action_mode||'—')==='pi05')?'π0.5':((p.action_mode||r.action_mode||d.request?.action_mode||'—').toUpperCase());el('runtime').textContent=r.duration_seconds?`${r.duration_seconds}s`:'—';el('modelLoad').textContent=r.model_load_seconds?`${r.model_load_seconds.toFixed(1)}s`:'—';const inference=p.mean_inference_seconds??r.mean_inference_seconds;el('inference').textContent=inference!==null&&inference!==undefined?`${(inference*1000).toFixed(1)} ms`:'—';
     const started=d.started_at||0;el('elapsed').textContent=d.running&&started?`${Math.floor(Date.now()/1000-started)}s elapsed`:(r.duration_seconds?`${r.duration_seconds}s total`:'—');el('friendly').textContent=friendlyText(d,p,r);el('log').textContent=(d.log||[]).join('\n')||'暂无日志';el('run').disabled=d.running;el('stop').disabled=!d.running;
     if(d.image_stamp&&d.image_stamp!==lastStamp){lastStamp=d.image_stamp;for(const suffix of cams)el(`cam${suffix||'1'}`).src=api(`/frames/image${suffix}.png`)+`&v=${lastStamp}`;}}
     catch(error){el('dot').className='dot error';el('connection').textContent=error.message;el('state').textContent='OFFLINE';el('friendly').textContent=`无法读取状态：${error.message}`;}}
@@ -147,12 +158,21 @@ def gpu_status() -> dict | None:
 
 
 def run_simulation(request: dict) -> None:
+    script = (
+        "pi05_episode.py"
+        if request["action_mode"] == "pi05"
+        else "smoke_libero.py"
+    )
     command = [
-        str(ROOT / ".venv/bin/python"), str(ROOT / "scripts/smoke_libero.py"),
+        str(ROOT / ".venv/bin/python"), str(ROOT / "scripts" / script),
         "--suite", request["suite"], "--task-id", str(request["task_id"]),
         "--seed", str(request["seed"]), "--steps", str(request["steps"]),
-        "--action-mode", request["action_mode"], "--image-every", "2", "--step-delay", "0.04",
+        "--action-mode", request["action_mode"],
     ]
+    if request["action_mode"] == "pi05":
+        command.extend(["--image-every", "1"])
+    else:
+        command.extend(["--image-every", "2", "--step-delay", "0.04"])
     environment = os.environ.copy()
     environment.update(MUJOCO_GL="egl", LIBERO_CONFIG_PATH=str(ROOT / "home/.libero"), HF_HOME=str(ROOT / "cache/huggingface"), HF_ENDPOINT="https://hf-mirror.com", HF_HUB_DISABLE_XET="1")
     RUN_LOG.parent.mkdir(parents=True, exist_ok=True)
@@ -183,10 +203,13 @@ def run_simulation(request: dict) -> None:
 
 
 class DashboardHandler(BaseHTTPRequestHandler):
-    server_version = "LIBERODashboard/2.0"
+    server_version = "LIBERODashboard/3.0"
 
     def log_message(self, format: str, *args) -> None:
-        print(f"{self.address_string()} - {format % args}", flush=True)
+        message = format % args
+        if TOKEN:
+            message = message.replace(TOKEN, "[REDACTED]")
+        print(f"{self.address_string()} - {message}", flush=True)
 
     def send_bytes(self, payload: bytes, content_type: str, status: int = 200) -> None:
         self.send_response(status)
@@ -212,7 +235,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_bytes(INDEX_HTML.encode("utf-8"), "text/html; charset=utf-8")
             return
         if parsed.path == "/healthz":
-            self.send_json({"status": "ok", "version": 2})
+            self.send_json({"status": "ok", "version": 3})
             return
         if not self.authorized(query):
             self.send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
@@ -259,11 +282,16 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 suite = str(body.get("suite", "libero_spatial"))
                 task_id = int(body.get("task_id", 0))
                 seed = int(body.get("seed", 7))
-                steps = int(body.get("steps", 80))
+                default_steps = (
+                    SUITE_MAX_STEPS.get(suite, 280)
+                    if str(body.get("action_mode", "demo")) == "pi05"
+                    else 80
+                )
+                steps = int(body.get("steps", default_steps))
                 action_mode = str(body.get("action_mode", "demo"))
                 if suite not in SUITES or not 0 <= task_id < SUITES[suite]:
                     raise ValueError("suite 或 task ID 不合法")
-                if action_mode not in {"idle", "demo"}:
+                if action_mode not in {"idle", "demo", "pi05"}:
                     raise ValueError("动作模式不合法")
                 if not 0 <= seed <= 2_147_483_647 or not 1 <= steps <= 1000:
                     raise ValueError("seed 或 steps 超出范围")
@@ -298,8 +326,8 @@ def main() -> None:
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=6006)
     args = parser.parse_args()
-    print(f"LIBERO dashboard v2 listening on http://{args.host}:{args.port}", flush=True)
-    print(f"Access token: {TOKEN}", flush=True)
+    print(f"LIBERO dashboard v3 listening on http://{args.host}:{args.port}", flush=True)
+    print("Access token: loaded from .dashboard_token", flush=True)
     ThreadingHTTPServer((args.host, args.port), DashboardHandler).serve_forever()
 
 
