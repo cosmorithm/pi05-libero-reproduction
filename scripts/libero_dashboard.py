@@ -167,12 +167,15 @@ def run_simulation(request: dict) -> None:
         str(ROOT / ".venv/bin/python"), str(ROOT / "scripts" / script),
         "--suite", request["suite"], "--task-id", str(request["task_id"]),
         "--seed", str(request["seed"]), "--steps", str(request["steps"]),
-        "--action-mode", request["action_mode"],
     ]
     if request["action_mode"] == "pi05":
         command.extend(["--image-every", "1"])
     else:
-        command.extend(["--image-every", "2", "--step-delay", "0.04"])
+        command.extend([
+            "--action-mode", request["action_mode"],
+            "--image-every", "2",
+            "--step-delay", "0.04",
+        ])
     environment = os.environ.copy()
     environment.update(MUJOCO_GL="egl", LIBERO_CONFIG_PATH=str(ROOT / "home/.libero"), HF_HOME=str(ROOT / "cache/huggingface"), HF_ENDPOINT="https://hf-mirror.com", HF_HUB_DISABLE_XET="1")
     RUN_LOG.parent.mkdir(parents=True, exist_ok=True)
