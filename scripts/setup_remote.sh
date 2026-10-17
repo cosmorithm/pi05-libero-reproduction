@@ -4,6 +4,7 @@ set -euo pipefail
 PROJECT_ROOT=/root/autodl-tmp/pi05-libero-reproduction
 VENV_ROOT="$PROJECT_ROOT/.venv"
 LEROBOT_ROOT="$PROJECT_ROOT/lerobot"
+LEROBOT_COMMIT="$(tr -d '[:space:]' < "$PROJECT_ROOT/LEROBOT_COMMIT")"
 
 export DEBIAN_FRONTEND=noninteractive
 export PIP_CACHE_DIR="$PROJECT_ROOT/cache/pip"
@@ -27,6 +28,8 @@ mkdir -p \
 apt-get update
 apt-get install -y --no-install-recommends \
   build-essential \
+  ca-certificates \
+  curl \
   ffmpeg \
   libegl1 \
   libgl1 \
@@ -38,6 +41,26 @@ apt-get install -y --no-install-recommends \
   libxext6 \
   libxrender1 \
   pkg-config
+
+if [[ ! -f "$LEROBOT_ROOT/pyproject.toml" ]]; then
+  archive="$PROJECT_ROOT/cache/lerobot-$LEROBOT_COMMIT.tar.gz"
+  staging="$(mktemp -d "$PROJECT_ROOT/cache/lerobot.extract.XXXXXX")"
+  echo "Downloading LeRobot source at $LEROBOT_COMMIT from GitHub codeload"
+  curl --fail --location \
+    --retry 8 --retry-all-errors --retry-delay 5 \
+    --output "$archive.part" \
+    "https://codeload.github.com/huggingface/lerobot/tar.gz/$LEROBOT_COMMIT"
+  mv "$archive.part" "$archive"
+  tar -xzf "$archive" --strip-components=1 -C "$staging"
+  printf '%s\n' "$LEROBOT_COMMIT" > "$staging/.source-commit"
+  mv "$staging" "$LEROBOT_ROOT"
+fi
+
+if [[ -f "$LEROBOT_ROOT/.source-commit" ]] && \
+   [[ "$(tr -d '[:space:]' < "$LEROBOT_ROOT/.source-commit")" != "$LEROBOT_COMMIT" ]]; then
+  echo "LeRobot source commit does not match LEROBOT_COMMIT" >&2
+  exit 1
+fi
 
 if [[ ! -x "$VENV_ROOT/bin/python" ]]; then
   /root/miniconda3/bin/python -m venv "$VENV_ROOT"
