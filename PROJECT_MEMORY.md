@@ -6,7 +6,7 @@
 
 - 目标：在单张 RTX 4090D 24GB 上搭建并复现 Pi0.5 + LIBERO。
 - 这是一个独立项目，不与此前的 NLP、Agent/Infra、CoT 或 GPU Keeper 项目混合。
-- 当前阶段：旧实例已完成真实 Pi0.5 闭环评测；2026-10-17 迁移到新实例后，代码、Git 历史、运行环境、LIBERO assets、Pi0.5 checkpoint 和本地 Dashboard 已恢复。新实例仍需完成 Hugging Face device OAuth、PaliGemma tokenizer 缓存和真实闭环复验。
+- 当前阶段：2026-10-17 迁移到新实例后，代码、Git 历史、运行环境、LIBERO assets、Pi0.5 checkpoint、PaliGemma tokenizer、真实闭环评测和本地 Dashboard 均已恢复并复验；新服务器 benchmark smoke 为 1/1 成功，准备重新执行四套正式 baseline。
 
 ## 服务器与目录
 
@@ -49,8 +49,10 @@
 - 新实例 setup 已通过：Python 3.12.3、PyTorch 2.11.0+cu128、transformers 5.5.4、LeRobot 0.6.2，`pip check` 无冲突，CUDA 2048×2048 矩阵乘法成功。
 - LIBERO assets 经镜像断点续传后 586/586 校验通过；新实例 smoke 成功生成 7 路 256×256 图像，`outputs/smoke/report.json` 为 `status: ok`。
 - `lerobot/pi05_libero_finetuned` 固定 revision 已通过服务器端镜像 + `hf-xet` 高性能通道恢复；`model.safetensors` 为 7,473,096,344 bytes，812 个 tensor key 校验通过。
-- 新实例尚未登录 Hugging Face，评测 preflight 以退出码 3 正确停在 gated PaliGemma tokenizer 检查，未误启动 GPU 推理。
-- Dashboard v3 已在新实例的 `screen` 会话 `libero-web` 启动，本机 `http://127.0.0.1:6006/healthz` 返回 version 3，首页 HTTP 200；公网仍需为新容器重新映射 6006。
+- 新实例已通过 Hugging Face device OAuth 登录账号 `yuhengchen`；固定 PaliGemma revision 的 tokenizer 已缓存并通过完全离线加载，基础词表 257,152，含 added token 总长度 257,153。
+- 新实例真实 `lerobot-eval` 复验成功：`libero_spatial` task 0、seed 7 在第 73 步完成，reward 1.0、success 1/1，rollout 约 8.06 秒，退出码 0。
+- Dashboard v3 已在新实例的 `screen` 会话 `libero-web` 启动，本机 `http://127.0.0.1:6006/healthz` 返回 version 3，首页 HTTP 200；12 步 demo 成功。真实 Pi0.5 Dashboard episode 在第 74 步成功，模型加载 122.98 秒、首帧推理 0.448 秒、峰值 CUDA 显存约 9.08 GB，7 路 H.264 256×256 视频均为 75 帧。公网仍需为新容器重新映射 6006。
+- 新实例 benchmark smoke 使用 runner 完成 task 0、seed 7、1 episode：1/1 成功，eval 约 8.11 秒，`summary.json/csv/md` 全部生成，观察显存约 10.4 GB。
 
 ### 旧服务器已验证基线（历史记录）
 
@@ -104,8 +106,7 @@ cat outputs/smoke/report.json
 
 ## 下一步
 
-1. 完成新实例 Hugging Face device OAuth，缓存 gated PaliGemma tokenizer。
-2. 复跑单任务真实 Pi0.5 闭环，确认动作、success、GPU 显存和七视角录制与旧实例一致。
-3. 为已启动的 Dashboard 配置新公网映射，再从头执行四套 LIBERO baseline；完成后对照官方平均 97.5%。
-4. 基线稳定后再增加多 seed、常驻模型 worker和 24GB 显存下的参数高效微调。
+1. 从头执行四套 LIBERO baseline，完成后对照官方平均 97.5%。
+2. 为已启动的 Dashboard 配置新公网映射。
+3. 基线稳定后再增加多 seed、常驻模型 worker 和 24GB 显存下的参数高效微调。
 
