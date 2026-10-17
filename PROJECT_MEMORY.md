@@ -6,13 +6,13 @@
 
 - 目标：在单张 RTX 4090D 24GB 上搭建并复现 Pi0.5 + LIBERO。
 - 这是一个独立项目，不与此前的 NLP、Agent/Infra、CoT 或 GPU Keeper 项目混合。
-- 当前阶段：LeRobot/PyTorch/LIBERO 仿真、Pi0.5 权重与 tokenizer 缓存、第一次真实单任务闭环评测均已完成；尚未下载训练数据或微调。
+- 当前阶段：旧实例已完成 LeRobot/PyTorch/LIBERO 仿真、Pi0.5 权重与 tokenizer 缓存、第一次真实单任务闭环评测；2026-10-17 已迁移到新实例，代码和 Git 历史已恢复，运行环境、模型、资产和实验输出正在重建。
 
 ## 服务器与目录
 
 - SSH 别名：`pi05-4090d`
-- 实际入口：`root@connect.westb.seetacloud.com:37629`
-- 主机名：`autodl-container-470e41955c-15394eb1`
+- 实际入口：`root@connect.westb.seetacloud.com:23741`
+- 主机名：`autodl-container-c85144bc1a-c9f2625b`
 - GPU：NVIDIA GeForce RTX 4090 D，24 GB
 - 远端项目根目录：`/root/autodl-tmp/pi05-libero-reproduction`
 - Python 虚拟环境：`/root/autodl-tmp/pi05-libero-reproduction/.venv`
@@ -37,6 +37,18 @@
 
 ## 当前状态
 
+### 新服务器迁移状态（2026-10-17）
+
+- 本机 SSH 别名 `pi05-4090d` 已改到端口 `23741`，免交互登录验证通过。
+- Git 仓库及完整提交历史已恢复到 `/root/autodl-tmp/pi05-libero-reproduction`；当前为干净的 `main`，迁移前 HEAD 为 `263e28c`。
+- 新实例的 `/root/autodl-tmp` 为 50 GB 持久盘，迁入代码后仍接近全空；RTX 4090 D 当前空闲。
+- `.venv`、`lerobot/`、`assets/`、`checkpoints/`、`cache/`、`outputs/` 和 `logs/` 被 `.gitignore` 排除，未随 Git 迁移，必须在新实例重建。
+- 旧端口 `37629` 已拒绝连接，旧实例约 73/100 的 Spatial benchmark 中间输出、视频和缓存目前不可取回；正式四套 benchmark 已中断，不应继续描述为正在运行。
+- 旧公网 Dashboard 域名绑定旧容器，不能代表新服务器状态。新实例完成验证后需要重新启动 6006 服务并使用新的 SeetaCloud 映射。
+- GitHub API 与仓库归档下载在新服务器可用，但 Git Smart HTTP 的 fetch/push 当前会超时；仓库历史通过本机临时中转完整恢复。后续提交可在服务器本地进行，推送前需修复 GitHub SSH/HTTPS 通道或继续使用本机中转。
+
+### 旧服务器已验证基线（历史记录）
+
 - 2026-10-17：仿真环境完成，真实 LIBERO 无头 reset/step 渲染通过。
 - 实测版本：Python 3.12.3、LeRobot 0.6.2、PyTorch 2.11.0+cu128、torchvision 0.26.0+cu128、CUDA runtime 12.8。
 - 仿真依赖：hf-libero 0.1.4、robosuite 1.4.0、robomimic 0.2.0、MuJoCo 3.8.1、Gymnasium 1.4.0、transformers 5.5.4。
@@ -46,11 +58,11 @@
 - `pip check`：`No broken requirements found.`
 - 资产校验：缓存仓库树包含 586 个文件，缺失 0、大小不符 0。
 - 下载模型后 `autodl-tmp` 约使用 21 GB、剩余 30 GB（总盘 50 GB、使用 42%）。
-- 当前没有安装、下载或训练进程；`screen` 会话 `libero-web` 正在提供 6006 Web 服务。关机不会丢失项目，但再次开机后需要重启该服务。
+- 旧实例曾以 `screen` 会话 `libero-web` 提供 6006 Web 服务；该服务未迁移到新实例。
 - 安装日志：`logs/setup.log`；smoke 日志：`logs/smoke.log`。
 - 结构化结果：`outputs/smoke/report.json`、`outputs/smoke/progress.json`；图像：`outputs/smoke/image.png` 至 `image7.png`。
 - Web 控制台 v3：`scripts/libero_dashboard.py`，监听 6006，使用项目根目录 `.dashboard_token` 鉴权；展示 LIBERO 场景全部 7 路相机、任务语言、实时步数、动作模式和 GPU 遥测。控制区位于相机上方，相机卡片可选紧凑/标准/大图并响应式排列。启动脚本为 `scripts/start_dashboard.sh`，运行日志为 `logs/dashboard.log`，单次仿真日志为 `logs/dashboard-run.log`。
-- 公网入口基址：`https://u580081-955c-15394eb1.westb.seetacloud.com:8443/`，访问时追加 `.dashboard_token`，不要在文档内保存真实 token。
+- 旧公网入口基址为 `https://u580081-955c-15394eb1.westb.seetacloud.com:8443/`；它绑定旧实例，仅作为历史记录，真实 token 不写入文档。
 - LeRobot 保持两路策略输入不变；额外 `galleryview`、`birdview`、`frontview`、`sideview`、`robot0_robotview` 从底层 MuJoCo 状态直接渲染，仅用于人类观察。五路直渲染画面已按 OpenGL 坐标约定做垂直翻转。
 - 2026-10-17 公网验证：控制台 v2 健康检查、首页、鉴权 API、7 个 PNG 端点均为 HTTP 200；从公网启动 12 步 demo episode 成功，7 路画面无黑屏、无重复且方向正常。
 - 2026-10-17 Pi0.5 兼容性审计：标准 checkpoint 选择 `lerobot/pi05_libero_finetuned`，revision `7152f13e34c6c115d808aea0e5d08aca74eac14b`，约 6.96 GiB；checkpoint 明确要求两路 256×256 图像、8 维状态、7 维动作、一个 empty camera 和 mean/std 归一化，与当前 LIBERO 接口匹配。
@@ -61,7 +73,7 @@
 - 2026-10-17 第一次真实 Pi0.5 闭环成功：task 0 指令为“pick up the black bowl between the plate and the ramekin and place it on the plate”；模型在第 73/280 步完成，reward 1.0、success true、1/1 episode，rollout wall time 8.081 秒，进程 exit code 0。按日志时间戳，首次冷启动从进程启动到结束约 2 分 14 秒，大部分时间用于 CPU 侧模型构建和权重映射。
 - 2026-10-17 Web 控制台 π0.5 模式完成：`scripts/pi05_episode.py` 使用 LeRobot `PI05Policy` 执行真实动作，同时采集两路策略相机和五路 MuJoCo 观察相机，逐帧写入 7 个 H.264 256×256 MP4。通过 `/api/run` 的 `action_mode=pi05` 启动完整 `libero_spatial` task 0、seed 7、280 步 episode 后再次成功，74 个动作步、reward 1.0、success true、7/7 路视频有效。本次模型加载 117.95 秒，首帧推理 0.446 秒，动作队列后续步约 0.006 秒。
 - 2026-10-17 控制台日志中的访问 token 已脱敏；新版日志记录为 `[REDACTED]`，启动信息不再打印完整 token。
-- 2026-10-17 正式基线 runner：`scripts/benchmark_libero.py` 使用 `lerobot-eval` 固定 seed 1000、batch size 1、`n_action_steps=10`、`compile_model=false`、硬重置和 256×256 观测。支持 suite 级断点续跑、`--task-ids` smoke、`--dry-run`、`--force`，结果汇总到 `outputs/benchmark/pi05-libero/summary.{json,csv,md}`。smoke `libero_spatial` task 0、seed 7、1 episode 已通过；完整四套 400 episode 基线正在后台执行。
+- 2026-10-17 正式基线 runner：`scripts/benchmark_libero.py` 使用 `lerobot-eval` 固定 seed 1000、batch size 1、`n_action_steps=10`、`compile_model=false`、硬重置和 256×256 观测。支持 suite 级断点续跑、`--task-ids` smoke、`--dry-run`、`--force`，结果汇总到 `outputs/benchmark/pi05-libero/summary.{json,csv,md}`。旧实例 smoke `libero_spatial` task 0、seed 7、1 episode 已通过；完整四套 400 episode 基线在迁移时中断。
 - 2026-10-17 夜间编排脚本：`scripts/run_overnight_benchmark.sh` 等待短 Spatial 前台任务结束后自动运行全部四套 suite，日志写入 `logs/benchmark-overnight.log`。
 - 评测期间观察到 GPU 显存约 10,417 MiB。输出位于 `outputs/eval/pi05-libero_spatial-task0-seed7/`：`eval_info.json`、`run.log` 和 H.264 256×256 主视角视频。视频 74 帧、80 fps、0.925 秒回放。
 
@@ -87,7 +99,8 @@ cat outputs/smoke/report.json
 
 ## 下一步
 
-1. 等待四套 LIBERO 基线完成后，核对 Spatial/Object/Goal/10 与官方平均 97.5% 的差距，并保存完整结果表。
-2. 给控制台增加七路录像回放或下载入口，并把 π0.5 模式改为常驻模型 worker，避免每次冷启动。
-3. 再决定是否增加 3 个 seed 平均、下载训练数据并做 24GB 显存下的参数高效微调。
+1. 在新实例按固定 LeRobot commit 重建 `.venv`、LIBERO assets、Pi0.5 checkpoint 和 PaliGemma tokenizer，并完成 smoke。
+2. 复跑单任务真实 Pi0.5 闭环，确认动作、success、GPU 显存和七视角录制与旧实例一致。
+3. 重新启动 Dashboard、配置新公网映射，再从头执行四套 LIBERO baseline；完成后对照官方平均 97.5%。
+4. 基线稳定后再增加多 seed、常驻模型 worker和 24GB 显存下的参数高效微调。
 

@@ -6,9 +6,11 @@
 /root/autodl-tmp/pi05-libero-reproduction
 ```
 
-当前阶段已完成仿真部署、七视角可视化、真实 π0.5 Web 控制、Pi0.5 LIBERO 微调权重与 tokenizer 缓存，并已完成第一次真实单任务闭环评测；正式四套 LIBERO 基线正在运行，尚未下载训练数据或启动微调。
+旧实例已完成仿真部署、七视角可视化、真实 π0.5 Web 控制、Pi0.5 LIBERO 微调权重与 tokenizer 缓存，以及第一次真实单任务闭环评测。项目于 2026-10-17 迁移到新服务器：代码和 Git 历史已恢复，运行环境、模型、资产与实验输出正在重建；旧实例上的正式四套 LIBERO baseline 已中断。
 
 ## 当前状态
+
+> 迁移提示：当前 SSH 入口为 `root@connect.westb.seetacloud.com:23741`，主机名为 `autodl-container-c85144bc1a-c9f2625b`。新实例目前只有代码仓库；下列版本、smoke、真实评测和 Dashboard 结果是旧实例已验证的可复现基线，不能理解为新实例正在运行。
 
 - 服务器：RTX 4090 D 24 GB，CUDA runtime 12.8
 - Python 3.12.3、PyTorch 2.11.0+cu128、torchvision 0.26.0+cu128
@@ -17,7 +19,7 @@
 - `pip check`：无依赖冲突
 - LIBERO assets：586/586 个文件校验通过，位于 `assets/`
 - smoke test：`libero_spatial` task 0 完成 reset、多步动作和 EGL 无头渲染，生成全部 7 路 256×256 RGB 相机画面
-- Web 控制台 v3：正在 6006 端口运行，支持 `idle`、`demo` 和真实 π0.5 模式，可从 SeetaCloud 自定义服务域名访问
+- Web 控制台 v3：代码已完成，支持 `idle`、`demo` 和真实 π0.5 模式；新实例尚未启动 6006 服务
 - Pi0.5 checkpoint：`lerobot/pi05_libero_finetuned`，固定 revision `7152f13e34c6c115d808aea0e5d08aca74eac14b`，服务器端镜像下载已完成并验证
 - 第一次真实评测：`libero_spatial` task 0、seed 7，1/1 episode 成功，模型在第 73 步完成任务
 - Benchmark smoke：`libero_spatial` task 0、seed 7，1/1 episode 成功，runner 结果和汇总链路通过
@@ -72,7 +74,7 @@ cat outputs/smoke/report.json
 
 轻量控制台监听服务器 `0.0.0.0:6006`，通过 SeetaCloud 自定义服务映射访问。它展示场景的全部 7 路相机（策略主视角、腕部、展示广角、俯视、正面、侧面、机器人本体），并支持选择 suite/task/seed/步数、静止演示、可见运动演示或 π0.5 真实策略、启动/停止 episode、自然语言任务、实时进度和 GPU 遥测。
 
-公网入口：
+旧实例公网入口（迁移后已失效，仅作历史记录）：
 
 ```text
 https://u580081-955c-15394eb1.westb.seetacloud.com:8443/?token=<TOKEN>
@@ -368,12 +370,12 @@ stat -c '%n %s bytes' checkpoints/lerobot-pi05-libero-finetuned/model.safetensor
 
 完整权重文件应为 `7,473,096,344` bytes。下载开始前服务器持久盘 `/root/autodl-tmp` 总计 50GB、已用约 14GB、可用约 37GB，因此权重能够放入；暂未下载 1.9GB 训练数据，也未下载 13.47GiB base checkpoint，以免无目的占用空间。
 
-本次下载于 2026-10-17 完成，耗时约 7 分 35 秒，日志结尾为 `Downloaded`、`EXIT_CODE=0`。完成后验证结果：
+旧实例上的本次下载于 2026-10-17 完成，耗时约 7 分 35 秒，日志结尾为 `Downloaded`、`EXIT_CODE=0`。这些权重和日志未随 Git 迁移，新实例需要重新下载。历史验证结果：
 
 - `model.safetensors` 精确大小为 `7,473,096,344` bytes；
 - safetensors header 可正常读取，共 812 个 tensor key；
 - 下载后台会话已正常退出，没有残留第二个下载进程；
-- 持久盘当前约使用 21GB、剩余 30GB；
+- 旧实例完成下载后持久盘约使用 21GB、剩余 30GB；新实例迁移代码后约有 50GB 可用；
 - `scripts/eval_pi05_single.sh` preflight 正确通过权重检查，并以 exit code 3 停在预期的 Hugging Face 登录检查，没有错误启动评测或占用 GPU。
 
 ### Hugging Face 许可门槛
@@ -457,7 +459,7 @@ cd /root/autodl-tmp/pi05-libero-reproduction
 - 未下载 LIBERO 演示/训练数据
 - 未运行 Pi0.5 微调或训练
 
-Pi0.5 单任务真实推理和七视角 Web 控制已经跑通。正式四套 LIBERO 基线评测正在按 `seed=1000`、每 task 10 episodes 执行；多 seed 平均和微调放在基线之后。
+Pi0.5 单任务真实推理和七视角 Web 控制已经在旧实例跑通。正式四套 LIBERO 基线在服务器迁移时中断；新实例完成环境和模型重建后需要从头执行。多 seed 平均和微调仍放在单 seed 基线之后。
 
 ## 工作记录
 
