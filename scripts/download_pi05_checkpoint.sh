@@ -47,6 +47,33 @@ fi
 model="$CHECKPOINT_DIR/model.safetensors"
 part="$CHECKPOINT_DIR/model.safetensors.part"
 if [[ ! -f "$model" ]] || [[ "$(stat -c '%s' "$model")" != "$EXPECTED_MODEL_BYTES" ]]; then
+  # hf-xet fetches CAS chunks concurrently and is much faster than the HTTP
+  # bridge for this 7 GiB file on SeetaCloud. Keep the mirror as the metadata
+  # endpoint while temporarily enabling Xet for the model payload.
+  rc=1
+  for attempt in $(seq 1 5); do
+    echo "Checkpoint Xet download attempt $attempt/5"
+    if env -u HF_HUB_DISABLE_XET HF_XET_HIGH_PERFORMANCE=1 \
+        "$PROJECT_ROOT/.venv/bin/hf" download "$REPO_ID" model.safetensors \
+        --revision "$REVISION" \
+        --local-dir "$CHECKPOINT_DIR"; then
+      rc=0
+      break
+    else
+      rc=$?
+    fi
+    echo "Checkpoint Xet download failed with exit code $rc; retrying in 30s"
+    sleep 30
+  done
+
+  if (( rc == 0 )); then
+    echo "Checkpoint model downloaded through hf-xet"
+  else
+    echo "hf-xet did not complete; falling back to segmented HTTP"
+  fi
+fi
+
+if [[ ! -f "$model" ]] || [[ "$(stat -c '%s' "$model")" != "$EXPECTED_MODEL_BYTES" ]]; then
   if ! command -v aria2c >/dev/null 2>&1; then
     echo "aria2c is required for the large checkpoint download" >&2
     exit 1
@@ -91,6 +118,8 @@ if [[ "$actual_bytes" != "$EXPECTED_MODEL_BYTES" ]]; then
   echo "Unexpected model size: $actual_bytes (expected $EXPECTED_MODEL_BYTES)" >&2
   exit 1
 fi
+
+rm -f "$part" "$part.aria2"
 
 "$PROJECT_ROOT/.venv/bin/python" - <<'PY'
 from pathlib import Path
