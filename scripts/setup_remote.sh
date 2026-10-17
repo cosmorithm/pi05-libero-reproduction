@@ -86,6 +86,17 @@ fi
   'torch==2.11.0+cu128' 'torchvision==0.26.0+cu128'
 "$VENV_ROOT/bin/python" -m pip install -e "$LEROBOT_ROOT[pi,libero,evaluation]"
 
+# hf-libero prompts on first import when config.yaml is absent. Keep every
+# runtime path on the persistent project disk and make fresh installs fully
+# non-interactive.
+cat > "$PROJECT_ROOT/home/.libero/config.yaml" <<EOF
+assets: $PROJECT_ROOT/assets
+bddl_files: $VENV_ROOT/lib/python3.12/site-packages/libero/libero/bddl_files
+benchmark_root: $VENV_ROOT/lib/python3.12/site-packages/libero/libero
+datasets: $PROJECT_ROOT/datasets
+init_states: $VENV_ROOT/lib/python3.12/site-packages/libero/libero/init_files
+EOF
+
 "$VENV_ROOT/bin/python" - <<'PY'
 import json
 import time
