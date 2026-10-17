@@ -27,6 +27,7 @@ mkdir -p \
 
 apt-get update
 apt-get install -y --no-install-recommends \
+  aria2 \
   build-essential \
   ca-certificates \
   curl \
