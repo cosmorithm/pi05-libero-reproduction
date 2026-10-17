@@ -88,6 +88,7 @@ fi
 
 "$VENV_ROOT/bin/python" - <<'PY'
 import json
+import time
 from importlib.util import find_spec
 from pathlib import Path
 
@@ -95,16 +96,22 @@ from huggingface_hub import snapshot_download
 
 assets = Path("/root/autodl-tmp/pi05-libero-reproduction/assets")
 
-try:
-    snapshot_download(
-        repo_id="lerobot/libero-assets",
-        repo_type="dataset",
-        local_dir=assets,
-        # hf-mirror.com rate-limits bursts; one worker is slower but reliable.
-        max_workers=1,
-    )
-except Exception as exc:
-    print(f"Asset mirror request ended with: {exc}")
+for attempt in range(1, 21):
+    try:
+        snapshot_download(
+            repo_id="lerobot/libero-assets",
+            repo_type="dataset",
+            local_dir=assets,
+            # hf-mirror.com rate-limits bursts; one worker is slower but reliable.
+            max_workers=1,
+        )
+        break
+    except Exception as exc:
+        delay = min(15 * attempt, 120)
+        print(f"Asset mirror attempt {attempt}/20 ended with: {exc}")
+        if attempt < 20:
+            print(f"Retrying the resumable asset download in {delay} seconds")
+            time.sleep(delay)
 
 # Validate against huggingface_hub's cached repository tree. A mirror may return
 # HTTP 429 while revalidating an already complete local_dir, so the local
