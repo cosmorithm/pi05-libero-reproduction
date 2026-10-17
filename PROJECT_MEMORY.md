@@ -6,7 +6,7 @@
 
 - 目标：在单张 RTX 4090D 24GB 上搭建并复现 Pi0.5 + LIBERO。
 - 这是一个独立项目，不与此前的 NLP、Agent/Infra、CoT 或 GPU Keeper 项目混合。
-- 当前阶段：旧实例已完成 LeRobot/PyTorch/LIBERO 仿真、Pi0.5 权重与 tokenizer 缓存、第一次真实单任务闭环评测；2026-10-17 已迁移到新实例，代码和 Git 历史已恢复，运行环境、模型、资产和实验输出正在重建。
+- 当前阶段：旧实例已完成真实 Pi0.5 闭环评测；2026-10-17 迁移到新实例后，代码、Git 历史、运行环境、LIBERO assets、Pi0.5 checkpoint 和本地 Dashboard 已恢复。新实例仍需完成 Hugging Face device OAuth、PaliGemma tokenizer 缓存和真实闭环复验。
 
 ## 服务器与目录
 
@@ -41,11 +41,16 @@
 
 - 本机 SSH 别名 `pi05-4090d` 已改到端口 `23741`，免交互登录验证通过。
 - Git 仓库及完整提交历史已恢复到 `/root/autodl-tmp/pi05-libero-reproduction`；当前为干净的 `main`，迁移前 HEAD 为 `263e28c`。
-- 新实例的 `/root/autodl-tmp` 为 50 GB 持久盘，迁入代码后仍接近全空；RTX 4090 D 当前空闲。
-- `.venv`、`lerobot/`、`assets/`、`checkpoints/`、`cache/`、`outputs/` 和 `logs/` 被 `.gitignore` 排除，未随 Git 迁移，必须在新实例重建。
+- 新实例的 `/root/autodl-tmp` 为 50 GB 持久盘；恢复环境、assets 和 checkpoint 后使用约 21 GB、剩余约 30 GB。
+- `.venv`、`lerobot/`、`assets/`、`checkpoints/`、`cache/`、`outputs/` 和 `logs/` 被 `.gitignore` 排除，没有随 Git 迁移；其中环境、LeRobot、assets、checkpoint、smoke 输出和日志已在新实例重建。
 - 旧端口 `37629` 已拒绝连接，旧实例约 73/100 的 Spatial benchmark 中间输出、视频和缓存目前不可取回；正式四套 benchmark 已中断，不应继续描述为正在运行。
 - 旧公网 Dashboard 域名绑定旧容器，不能代表新服务器状态。新实例完成验证后需要重新启动 6006 服务并使用新的 SeetaCloud 映射。
 - GitHub API 与仓库归档下载在新服务器可用，但 Git Smart HTTP 的 fetch/push 当前会超时；仓库历史通过本机临时中转完整恢复。后续提交可在服务器本地进行，推送前需修复 GitHub SSH/HTTPS 通道或继续使用本机中转。
+- 新实例 setup 已通过：Python 3.12.3、PyTorch 2.11.0+cu128、transformers 5.5.4、LeRobot 0.6.2，`pip check` 无冲突，CUDA 2048×2048 矩阵乘法成功。
+- LIBERO assets 经镜像断点续传后 586/586 校验通过；新实例 smoke 成功生成 7 路 256×256 图像，`outputs/smoke/report.json` 为 `status: ok`。
+- `lerobot/pi05_libero_finetuned` 固定 revision 已通过服务器端镜像 + `hf-xet` 高性能通道恢复；`model.safetensors` 为 7,473,096,344 bytes，812 个 tensor key 校验通过。
+- 新实例尚未登录 Hugging Face，评测 preflight 以退出码 3 正确停在 gated PaliGemma tokenizer 检查，未误启动 GPU 推理。
+- Dashboard v3 已在新实例的 `screen` 会话 `libero-web` 启动，本机 `http://127.0.0.1:6006/healthz` 返回 version 3，首页 HTTP 200；公网仍需为新容器重新映射 6006。
 
 ### 旧服务器已验证基线（历史记录）
 
@@ -99,8 +104,8 @@ cat outputs/smoke/report.json
 
 ## 下一步
 
-1. 在新实例按固定 LeRobot commit 重建 `.venv`、LIBERO assets、Pi0.5 checkpoint 和 PaliGemma tokenizer，并完成 smoke。
+1. 完成新实例 Hugging Face device OAuth，缓存 gated PaliGemma tokenizer。
 2. 复跑单任务真实 Pi0.5 闭环，确认动作、success、GPU 显存和七视角录制与旧实例一致。
-3. 重新启动 Dashboard、配置新公网映射，再从头执行四套 LIBERO baseline；完成后对照官方平均 97.5%。
+3. 为已启动的 Dashboard 配置新公网映射，再从头执行四套 LIBERO baseline；完成后对照官方平均 97.5%。
 4. 基线稳定后再增加多 seed、常驻模型 worker和 24GB 显存下的参数高效微调。
 

@@ -6,11 +6,11 @@
 /root/autodl-tmp/pi05-libero-reproduction
 ```
 
-旧实例已完成仿真部署、七视角可视化、真实 π0.5 Web 控制、Pi0.5 LIBERO 微调权重与 tokenizer 缓存，以及第一次真实单任务闭环评测。项目于 2026-10-17 迁移到新服务器：代码和 Git 历史已恢复，运行环境、模型、资产与实验输出正在重建；旧实例上的正式四套 LIBERO baseline 已中断。
+旧实例已完成仿真部署、七视角可视化和真实 π0.5 闭环评测。项目于 2026-10-17 迁移到新服务器：代码、Git 历史、运行环境、586 个 LIBERO assets、Pi0.5 checkpoint、七视角 smoke 和本地 Dashboard 已恢复；PaliGemma tokenizer 正等待新实例 Hugging Face device OAuth。旧实例上的正式四套 LIBERO baseline 已中断。
 
 ## 当前状态
 
-> 迁移提示：当前 SSH 入口为 `root@connect.westb.seetacloud.com:23741`，主机名为 `autodl-container-c85144bc1a-c9f2625b`。新实例目前只有代码仓库；下列版本、smoke、真实评测和 Dashboard 结果是旧实例已验证的可复现基线，不能理解为新实例正在运行。
+> 迁移提示：当前 SSH 入口为 `root@connect.westb.seetacloud.com:23741`，主机名为 `autodl-container-c85144bc1a-c9f2625b`。环境、assets、checkpoint、smoke 和本地 Dashboard 已在新实例恢复；下列“第一次真实评测”成功率仍是旧实例基线，必须在 tokenizer 授权后复验。
 
 - 服务器：RTX 4090 D 24 GB，CUDA runtime 12.8
 - Python 3.12.3、PyTorch 2.11.0+cu128、torchvision 0.26.0+cu128
@@ -19,8 +19,8 @@
 - `pip check`：无依赖冲突
 - LIBERO assets：586/586 个文件校验通过，位于 `assets/`
 - smoke test：`libero_spatial` task 0 完成 reset、多步动作和 EGL 无头渲染，生成全部 7 路 256×256 RGB 相机画面
-- Web 控制台 v3：代码已完成，支持 `idle`、`demo` 和真实 π0.5 模式；新实例尚未启动 6006 服务
-- Pi0.5 checkpoint：`lerobot/pi05_libero_finetuned`，固定 revision `7152f13e34c6c115d808aea0e5d08aca74eac14b`，服务器端镜像下载已完成并验证
+- Web 控制台 v3：已在新实例本地 6006 端口运行，支持 `idle`、`demo` 和真实 π0.5 模式；公网仍需新容器映射
+- Pi0.5 checkpoint：`lerobot/pi05_libero_finetuned`，固定 revision `7152f13e34c6c115d808aea0e5d08aca74eac14b`，已通过服务器端镜像 + hf-xet 恢复并验证
 - 第一次真实评测：`libero_spatial` task 0、seed 7，1/1 episode 成功，模型在第 73 步完成任务
 - Benchmark smoke：`libero_spatial` task 0、seed 7，1/1 episode 成功，runner 结果和汇总链路通过
 
