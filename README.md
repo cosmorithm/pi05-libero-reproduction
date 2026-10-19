@@ -1,5 +1,38 @@
 # Pi0.5-LIBERO Reproduction
 
+## 新会话从这里开始
+
+如果你是一个接手本项目的新 AI，先不要直接假设旧状态仍然成立。按下面顺序启动：
+
+1. 阅读长期记忆：
+   - [`docs/memory/CURRENT.md`](docs/memory/CURRENT.md)：当前已验证状态
+   - [`docs/memory/EXPERIMENTS.md`](docs/memory/EXPERIMENTS.md)：实验台账
+   - [`docs/memory/OPEN_QUESTIONS.md`](docs/memory/OPEN_QUESTIONS.md)：未解决问题
+   - [`docs/memory/RUNBOOK.md`](docs/memory/RUNBOOK.md)：可执行命令
+2. 连接服务器并自行核验：
+
+```bash
+ssh pi05-4090d
+cd /root/autodl-tmp/pi05-libero-reproduction
+git status --short
+git log -8 --oneline
+screen -ls
+nvidia-smi
+cat outputs/benchmark/pi05-libero-seed2000/status.json 2>/dev/null || true
+```
+
+3. 不要只依赖 README 或旧记忆：检查实际 output、日志、screen 和 Git 状态。
+4. 不要执行 `git reset --hard`、`git checkout --`、`rm -rf`，不要删除 checkpoint、
+   assets、cache、outputs 或正在运行的 screen。
+5. 不要停止正在运行的任务，除非日志明确不可恢复或用户明确要求。
+6. 不要输出、提交或索取 Hugging Face token、Dashboard token、SSH 私钥或任何密钥。
+7. 开始任务前先读 [`docs/memory/README.md`](docs/memory/README.md)，完成后追加
+   `docs/memory/events.jsonl` 并更新 `CURRENT.md` / `EXPERIMENTS.md`。
+
+当前项目状态摘要：seed=1000 四套 LIBERO 已完成 392/400；seed=2000 三套已完成
+292/300；Torch VLM 语言探针已完成；OpenPI JAX `pi05_libero` 环境和 checkpoint
+正在准备。实时状态以 `docs/memory/CURRENT.md` 为准。
+
 独立的 LeRobot/PyTorch + LIBERO 仿真复现环境。远端根目录固定为：
 
 ```text
@@ -19,7 +52,9 @@
 - `pip check`：无依赖冲突
 - LIBERO assets：586/586 个文件校验通过，位于 `assets/`
 - smoke test：`libero_spatial` task 0 完成 reset、多步动作和 EGL 无头渲染，生成全部 7 路 256×256 RGB 相机画面
-- Web 控制台 v3：已在新实例本地 6006 端口运行，支持 `idle`、`demo` 和真实 π0.5 模式；公网仍需新容器映射
+- Web 控制台 v3：监听容器 `6006`，公网入口
+  `https://u580081-8d63-18907193.westb.seetacloud.com:8443/`；支持 `idle`、`demo`、
+  真实 π0.5 模式和鉴权后的 `/benchmark/` 历史评测回放
 - Pi0.5 checkpoint：`lerobot/pi05_libero_finetuned`，固定 revision `7152f13e34c6c115d808aea0e5d08aca74eac14b`，已通过服务器端镜像 + hf-xet 恢复并验证
 - 新服务器真实评测：`libero_spatial` task 0、seed 7，1/1 episode 成功，模型在第 73 步完成任务，rollout 约 8.06 秒
 - 新服务器 Dashboard 真实模式：第 74 步成功，七路 H.264 256×256 视频均为 75 帧
@@ -27,10 +62,15 @@
 - 正式 baseline 最终结果：`libero_spatial` 98/100、`libero_object` 100/100、`libero_goal` 97/100、`libero_10` 97/100；合计 392/400（98.0%，Wilson 95% CI 96.1%-99.0%）。旧 `libero_10` 半截过程未纳入统计，最终 suite 已从头完成
 - `seed=2000` 多 seed 第一阶段：`libero_spatial` 97/100、`libero_object` 98/100、`libero_goal` 97/100，三 suite 合计 292/300（97.3%，Wilson 95% CI 94.8%-98.7%）。与 `seed=1000` 的共有三 suite 合并为 587/600（97.8%）
 - 2026-10-19 复核：四套 `eval_info.json`、400 个主视角 MP4 和总 `summary.json/csv/md` 均已生成，`status.json` 为 `complete`；Dashboard 本地 `/healthz` 正常
-- Git：remote 已切换为 GitHub SSH；服务器认证身份为 `cosmorithm`，`main` 已成功推送至提交 `e8f5df4`
+- Git：remote 为 GitHub SSH；服务器认证身份为 `cosmorithm`，`main` 已成功推送
 - 阶段中文报告：[`reports/Pi05-LIBERO-项目状态报告-2026-10-19.pdf`](reports/Pi05-LIBERO-项目状态报告-2026-10-19.pdf)
 - 详细最终报告：[`reports/Pi05-LIBERO-详细最终技术报告-2026-10-19.pdf`](reports/Pi05-LIBERO-详细最终技术报告-2026-10-19.pdf)
 - 多 seed 阶段性报告：[`reports/pi05-libero-multiseed-2026-10-19.md`](reports/pi05-libero-multiseed-2026-10-19.md)
+- Web 控制台已恢复，并新增鉴权后的 `/benchmark/` 历史评测回放页；公网入口为
+  `https://u580081-8d63-18907193.westb.seetacloud.com:8443/`
+- OpenPI JAX 准备中：源码固定到 `215abfb217dbac7d5f1273282331b9b1866c0479`，
+  独立 `.venv-openpi` 正在安装；官方 `pi05_libero` checkpoint 正在服务器上通过 IPv4 下载
+- 长期项目记忆入口：[`docs/memory/README.md`](docs/memory/README.md)
 
 ## 登录
 
@@ -120,6 +160,20 @@ screen -S libero-web -X quit
 公网 API 和相机帧要求 `?token=<.dashboard_token 内容>`；根页面和 `/healthz` 不包含敏感信息。控制台仅能启动预定义仿真参数，不提供终端或任意命令执行。演示动作只用于观察机械臂运动，不是任务策略，`success=false` 属于正常结果。
 
 带 token 访问 `/benchmark/` 可以浏览历史评测目录。任务目录中的 MP4 会以内嵌播放器显示，视频请求支持 HTTP Range，因此浏览器可以拖拽进度条。
+
+## 项目长期记忆系统
+
+项目使用 [`docs/memory/`](docs/memory/) 维护人类和 AI 都能读取的长期文档：
+
+- [`CURRENT.md`](docs/memory/CURRENT.md)：当前可验证状态
+- [`EXPERIMENTS.md`](docs/memory/EXPERIMENTS.md)：实验和结果台账
+- [`DECISIONS.md`](docs/memory/DECISIONS.md)：关键决策与理由
+- [`OPEN_QUESTIONS.md`](docs/memory/OPEN_QUESTIONS.md)：未解决问题和风险
+- [`RUNBOOK.md`](docs/memory/RUNBOOK.md)：可执行命令
+- [`events.jsonl`](docs/memory/events.jsonl)：机器可读的追加式事件流
+
+维护规则见 [`docs/memory/README.md`](docs/memory/README.md)。根目录
+[`PROJECT_MEMORY.md`](PROJECT_MEMORY.md) 保留历史叙事，不再承担唯一的实时状态来源。
 
 ### π0.5 真实策略模式
 

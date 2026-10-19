@@ -2,11 +2,16 @@
 
 > 这份文件用于跨会话接续工作。每次部署、验证、训练或评测后都应更新它。
 
+> **结构化长期记忆入口：** [`docs/memory/README.md`](docs/memory/README.md)。
+> 当前可验证状态以 [`docs/memory/CURRENT.md`](docs/memory/CURRENT.md) 为准；
+> 实验台账见 [`docs/memory/EXPERIMENTS.md`](docs/memory/EXPERIMENTS.md)。
+> 本文保留历史叙事，实时状态不应只依赖本文。
+
 ## 项目边界
 
 - 目标：在单张 RTX 4090D 24GB 上搭建并复现 Pi0.5 + LIBERO。
 - 这是一个独立项目，不与此前的 NLP、Agent/Infra、CoT 或 GPU Keeper 项目混合。
-- 当前阶段：2026-10-19 当前容器已恢复环境、模型、Dashboard 和正式 benchmark。四套 `seed=1000` LIBERO suite 共 400 个 episode 已完整落盘，最终为 392/400（98.0%）；`seed=2000` 的三个共有 suite 已完成，为 292/300（97.3%）。GitHub SSH 已验证并可直接推送。
+- 当前阶段：2026-10-19 当前容器已恢复环境、模型、Dashboard 和正式 benchmark。四套 `seed=1000` LIBERO suite 共 400 个 episode 已完整落盘，最终为 392/400（98.0%）；`seed=2000` 的三个共有 suite 已完成，为 292/300（97.3%）。OpenPI JAX 的官方 `pi05_libero` checkpoint/环境正在准备。GitHub SSH 已验证并可直接推送。
 
 ## 服务器与目录
 
