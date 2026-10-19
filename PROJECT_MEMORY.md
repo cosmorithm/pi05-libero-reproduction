@@ -6,13 +6,13 @@
 
 - 目标：在单张 RTX 4090D 24GB 上搭建并复现 Pi0.5 + LIBERO。
 - 这是一个独立项目，不与此前的 NLP、Agent/Infra、CoT 或 GPU Keeper 项目混合。
-- 当前阶段：2026-10-17 迁移到新实例后，代码、Git 历史、运行环境、LIBERO assets、Pi0.5 checkpoint、PaliGemma tokenizer、真实闭环评测和本地 Dashboard 均已恢复并复验；新服务器 benchmark smoke 为 1/1 成功，准备重新执行四套正式 baseline。
+- 当前阶段：2026-10-19 当前容器已恢复环境、模型、Dashboard 和正式 benchmark。`libero_spatial`、`libero_object`、`libero_goal` 共 300 个 episode 已完整落盘；`libero_10` 正在从头恢复。GitHub SSH 已验证并可直接推送。
 
 ## 服务器与目录
 
 - SSH 别名：`pi05-4090d`
-- 实际入口：`root@connect.westb.seetacloud.com:23741`
-- 主机名：`autodl-container-c85144bc1a-c9f2625b`
+- 实际入口：`root@connect.westb.seetacloud.com:21897`
+- 主机名：`autodl-container-2e4d46bfa5-2ad818b7`
 - GPU：NVIDIA GeForce RTX 4090 D，24 GB
 - 远端项目根目录：`/root/autodl-tmp/pi05-libero-reproduction`
 - Python 虚拟环境：`/root/autodl-tmp/pi05-libero-reproduction/.venv`
@@ -37,15 +37,25 @@
 
 ## 当前状态
 
+### 当前容器恢复与基线进度（2026-10-19）
+
+- 本机别名 `pi05-4090d` 已更新至端口 `21897`，免交互登录验证到当前主机名 `autodl-container-2e4d46bfa5-2ad818b7`。
+- 上一容器的 `screen` 会话在容器变更后死亡。持久盘没有丢失：三套已完成 benchmark 的 `eval_info.json`、元数据和视频仍存在；第四套 `libero_10` 没有生成 `eval_info.json`，不能被视为完成。
+- 已完成的正式结果（seed 1000、每 task 10 episodes）：`libero_spatial` 98/100（98.0%，Wilson 95% CI 93.0%-99.4%）、`libero_object` 100/100（100.0%，96.3%-100.0%）、`libero_goal` 97/100（97.0%，91.5%-99.0%）。阶段合计为 295/300（98.3%），尚不是四套最终平均。
+- 已重新启动 `screen` 会话 `libero-web` 和 `pi05-baseline`。runner 会自动跳过前三套已有 `eval_info.json` 的结果，只从头评测 `libero_10`；报告时 GPU 显存约 10.6 GB，已经进入真实 rollout。
+- Dashboard 本地 `http://127.0.0.1:6006/healthz` 返回 `{"status":"ok","version":3}`；公网 6006 映射仍需在 SeetaCloud 面板指向当前容器。
+- 服务器生成专用 ed25519 GitHub key 后，用户已登记其公钥；`ssh -T git@github.com` 成功认证为 `cosmorithm`。项目 remote 改为 `git@github.com:cosmorithm/pi05-libero-reproduction.git`，`main` 已从 `263e28c` 推送至 `e8f5df4`。
+- 中文阶段报告位于 `reports/Pi05-LIBERO-项目状态报告-2026-10-19.pdf`；本地下载副本由当前会话提供。
+
 ### 新服务器迁移状态（2026-10-17）
 
-- 本机 SSH 别名 `pi05-4090d` 已改到端口 `23741`，免交互登录验证通过。
+- 历史迁移入口曾使用端口 `23741` 和主机名 `autodl-container-c85144bc1a-c9f2625b`；它们已被本节当前入口替代，不应用于新的连接。
 - Git 仓库及完整提交历史已恢复到 `/root/autodl-tmp/pi05-libero-reproduction`；当前为干净的 `main`，迁移前 HEAD 为 `263e28c`。
 - 新实例的 `/root/autodl-tmp` 为 50 GB 持久盘；恢复环境、assets 和 checkpoint 后使用约 21 GB、剩余约 30 GB。
 - `.venv`、`lerobot/`、`assets/`、`checkpoints/`、`cache/`、`outputs/` 和 `logs/` 被 `.gitignore` 排除，没有随 Git 迁移；其中环境、LeRobot、assets、checkpoint、smoke 输出和日志已在新实例重建。
 - 旧端口 `37629` 已拒绝连接，旧实例约 73/100 的 Spatial benchmark 中间输出、视频和缓存目前不可取回；正式四套 benchmark 已中断，不应继续描述为正在运行。
 - 旧公网 Dashboard 域名绑定旧容器，不能代表新服务器状态。新实例完成验证后需要重新启动 6006 服务并使用新的 SeetaCloud 映射。
-- GitHub API 与仓库归档下载在新服务器可用，但 Git Smart HTTP 的 fetch/push 当前会超时；仓库历史通过本机临时中转完整恢复。后续提交可在服务器本地进行，推送前需修复 GitHub SSH/HTTPS 通道或继续使用本机中转。
+- GitHub Smart HTTP 曾超时；现已改用服务器专用 GitHub SSH key 并成功验证与推送，后续提交可直接 `git push origin main`。
 - 新实例 setup 已通过：Python 3.12.3、PyTorch 2.11.0+cu128、transformers 5.5.4、LeRobot 0.6.2，`pip check` 无冲突，CUDA 2048×2048 矩阵乘法成功。
 - LIBERO assets 经镜像断点续传后 586/586 校验通过；新实例 smoke 成功生成 7 路 256×256 图像，`outputs/smoke/report.json` 为 `status: ok`。
 - `lerobot/pi05_libero_finetuned` 固定 revision 已通过服务器端镜像 + `hf-xet` 高性能通道恢复；`model.safetensors` 为 7,473,096,344 bytes，812 个 tensor key 校验通过。
@@ -106,7 +116,7 @@ cat outputs/smoke/report.json
 
 ## 下一步
 
-1. 从头执行四套 LIBERO baseline，完成后对照官方平均 97.5%。
+1. 等待并核验 `libero_10`，生成完整四套 400 episode 汇总；不要把阶段性 295/300 当作最终结果。
 2. 为已启动的 Dashboard 配置新公网映射。
-3. 基线稳定后再增加多 seed、常驻模型 worker 和 24GB 显存下的参数高效微调。
+3. 基线稳定后增加多 seed、保存失败实例，并再评估常驻模型 worker 与 24GB 显存下的参数高效微调。
 
