@@ -229,7 +229,6 @@ def main() -> int:
     elif result_path.exists():
         raise FileExistsError(f"{result_path} exists; use --resume or choose another directory")
 
-    expected_image_tokens = 18 * 18  # Pi0.5 uses 256x256 images with 14px patches.
     image_sha256 = hashlib.sha256(args.image.read_bytes()).hexdigest()
     started = time.time()
     now = datetime.now(timezone.utc).isoformat()
@@ -242,9 +241,9 @@ def main() -> int:
         "image_sha256": image_sha256,
         "questions_total": args.limit,
         "decoding": {"do_sample": False, "max_new_tokens": args.max_new_tokens, "use_cache": True},
-        "prompt_template": "answer en {question}",
+        "prompt_template": "<image>answer en {question}",
         "fixed_visual_context": True,
-        "expected_image_tokens": expected_image_tokens,
+        "expected_image_tokens": "derived from loaded Pi0.5 VLM geometry",
     }
     write_json(manifest_path, manifest)
     write_json(status_path, {**manifest, "state": "loading", "completed": len(existing), "errors": 0})
@@ -262,11 +261,14 @@ def main() -> int:
     print(f"Loaded VLM: {vlm.__class__.__name__}", flush=True)
 
     processor = AutoProcessor.from_pretrained(args.processor, local_files_only=True)
-    # The cached processor originates from 224px PaliGemma.  Pi0.5 was instantiated at
-    # 256px; update both geometry and image-token prefix so the VLM's visual features and
-    # input image-token positions agree (18x18 = 324 tokens).
-    processor.image_processor.size = {"height": 256, "width": 256}
-    processor.image_processor.crop_size = {"height": 256, "width": 256}
+    # The simulator emits 256px camera frames, but this checkpoint's actual policy
+    # preprocessing / VLM geometry is 224px.  Derive every probe shape from the
+    # loaded checkpoint rather than from the raw simulator observation.
+    vlm_image_size = int(vlm.config.vision_config.image_size)
+    patch_size = int(vlm.config.vision_config.patch_size)
+    expected_image_tokens = (vlm_image_size // patch_size) ** 2
+    processor.image_processor.size = {"height": vlm_image_size, "width": vlm_image_size}
+    processor.image_processor.crop_size = {"height": vlm_image_size, "width": vlm_image_size}
     processor.image_seq_length = expected_image_tokens
     # This OpenPI port sets the legacy ``image_token_index`` during
     # construction, while recent Transformers reads ``image_token_id`` in the
@@ -285,12 +287,13 @@ def main() -> int:
         "gpu": torch.cuda.get_device_name(0),
         "vlm_class": vlm.__class__.__name__,
         "processor_class": processor.__class__.__name__,
-        "vlm_image_size": int(vlm.config.vision_config.image_size),
+        "vlm_image_size": vlm_image_size,
+        "vlm_patch_size": patch_size,
         "vlm_image_token_id": int(vlm.config.image_token_id),
         "processor_image_token_id": int(processor.image_token_id),
         # This OpenPI-compatible PaliGemma config does not expose the newer
         # Transformers ``image_seq_length`` field.  The expected count is
-        # recorded explicitly from the Pi0.5 256px/14px geometry instead.
+        # recorded explicitly from the loaded vision geometry instead.
         "vlm_image_seq_length": int(getattr(vlm.config, "image_seq_length", expected_image_tokens)),
     }
     write_json(manifest_path, metadata)
@@ -300,7 +303,9 @@ def main() -> int:
     for index, row in enumerate(rows, start=1):
         if row["id"] in existing:
             continue
-        prompt = f"answer en {row['question']}"
+        # Make the image prefix explicit, avoiding the processor's inferred
+        # image-prefix heuristic and fixing the direct VLM probe input exactly.
+        prompt = f"<image>answer en {row['question']}"
         t0 = time.perf_counter()
         record: dict[str, Any] = {**row, "prompt": prompt}
         try:
