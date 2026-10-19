@@ -1,6 +1,6 @@
-# Pi0.5-LIBERO 正式基线评测：运行说明与阶段报告
+# Pi0.5-LIBERO 正式基线评测：运行说明与最终报告
 
-> 报告时点：2026-10-19 15:01 CST。本文是阶段报告：前三个 suite 的结果已完成并可复核；`libero_10` 仍在运行，不能被纳入最终总体结论。
+> 评测完成时点：2026-10-19 15:09 CST。四个 suite 均已完成，共 400 个 episode；本报告使用完整结构化结果。
 
 ## 1. 这项任务究竟在做什么
 
@@ -55,28 +55,28 @@ Host: autodl-container-2e4d46bfa5-2ad818b7
 Project: /root/autodl-tmp/pi05-libero-reproduction
 ```
 
-恢复 runner 会跳过已经拥有完整 `eval_info.json` 的前三套，只从头执行 `libero_10`。报告时该 suite 已写出 66 个回放视频，正在第 7 个 task 左右继续运行；尚未生成 `libero_10/eval_info.json` 与全量 `summary.json`。
-
-`status.json` 只在 suite 边界更新，因此它在正在运行时显示的 `updated_at` 不代表进程没有推进；应同时以 `screen -list`、GPU 显存、`run.log` 末尾和视频计数判断活跃性。
+恢复 runner 跳过了已经拥有完整 `eval_info.json` 的前三套，只从头执行 `libero_10`。该 suite 现已完成，100 个回放视频、`eval_info.json` 和全量 `summary.json/csv/md` 均已生成。`status.json` 为 `complete`，`pi05-baseline` 会话已正常退出；仅 `libero-web` Dashboard 服务保持运行。
 
 ## 5. 已确认的阶段性结果
 
-下表只统计已完整落盘的 3 个 suite，即 300 个 episode。
+下表统计四个已完整落盘的 suite，即 400 个 episode。
 
 | Suite | 成功 / Episode | 成功率 | Wilson 95% 区间 | 总评测耗时 | 平均每 episode |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | `libero_spatial` | 98 / 100 | 98.0% | 93.0% - 99.4% | 674.2 s | 6.74 s |
 | `libero_object` | 100 / 100 | 100.0% | 96.3% - 100.0% | 711.8 s | 7.12 s |
 | `libero_goal` | 97 / 100 | 97.0% | 91.5% - 99.0% | 619.7 s | 6.20 s |
-| 阶段合计 | 295 / 300 | 98.3% | 不适用于跨 suite 官方比较 | 2005.7 s | 6.69 s |
+| `libero_10` | 97 / 100 | 97.0% | 91.5% - 99.0% | 1339.1 s | 13.39 s |
+| 总体 | 392 / 400 | 98.0% | 96.1% - 99.0% | 3344.8 s | 8.36 s |
 
 已知失败 task：
 
 - `libero_spatial`：task 5 与 task 9，各为 9/10；
 - `libero_goal`：task 0、2、9，各为 9/10；
+- `libero_10`：task 4 为 9/10，task 8 为 8/10；
 - `libero_object`：在本次固定 seed 下为 100/100。
 
-目前没有把 98.3% 表述成“最终 400 episode 成功率”，也没有把它当作官方排行榜复现。完整第四套结果、更多 seed 和严格对齐的上游版本都还需要补齐。
+总体 98.0% 是完整 400 episode 的固定 seed 结果；它仍不应被当作跨随机种子、跨环境版本或官方排行榜结论。更多 seed、失败视频分析和严格上游版本对齐仍需要补齐。
 
 ## 6. 输出位置与如何复核
 
@@ -91,7 +91,7 @@ outputs/benchmark/pi05-libero/status.json
 logs/benchmark-resume-20261019.log
 ```
 
-完成后 runner 将生成：
+本次已经生成：
 
 ```text
 outputs/benchmark/pi05-libero/summary.json
@@ -118,7 +118,7 @@ python -m json.tool outputs/benchmark/pi05-libero/status.json
 git@github.com:cosmorithm/pi05-libero-reproduction.git
 ```
 
-阶段性文档、SSH 入口变更和上一份 PDF 已推送到 `main` 的提交 `ef69443`。本报告会作为新的提交推送；`libero_10` 完成且结果核验后还会再推送一次最终更新。
+阶段性文档、SSH 入口变更和上一份 PDF 已推送到 `main`。本报告和详细最终 PDF 将作为最终结果更新推送，后续 Git 记录将对应完整 400 episode 基线。
 
 ## 8. 结论与下一步
 
@@ -126,8 +126,8 @@ git@github.com:cosmorithm/pi05-libero-reproduction.git
 
 接下来的顺序是：
 
-1. 等待 `libero_10` 写出完整结果；
-2. 核验四套 task 数、episode 数、视频数和 `summary`；
-3. 更新本报告为最终 400-episode 版本并推送；
-4. 再运行多 seed，分析失败视频，而不是直接开始微调；
-5. 最后才设计 24 GB 显存下的参数高效微调实验。
+1. 保存本次 400 episode 基线与失败回放清单；
+2. 新增多个 seed，报告每 task 的方差而不是只保留一个 seed；
+3. 分析 8 个失败 episode，再决定视觉、控制或数据层面的改进；
+4. 在开始训练前定义 24 GB 显存下的参数高效微调实验；
+5. 若转向实机，先实施标定、遥操作采集、action 限幅和影子模式，而不是让云端 SSH 直接闭环控制机械臂。

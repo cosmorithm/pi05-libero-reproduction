@@ -24,10 +24,11 @@
 - 新服务器真实评测：`libero_spatial` task 0、seed 7，1/1 episode 成功，模型在第 73 步完成任务，rollout 约 8.06 秒
 - 新服务器 Dashboard 真实模式：第 74 步成功，七路 H.264 256×256 视频均为 75 帧
 - 新服务器 Benchmark smoke：`libero_spatial` task 0、seed 7，1/1 episode 成功，runner 结果和汇总链路通过
-- 正式 baseline 阶段结果：`libero_spatial` 98/100、`libero_object` 100/100、`libero_goal` 97/100；合计 295/300（98.3%）。`libero_10` 曾随旧容器中断且未生成完整结果，现已从头恢复运行，不把中断过程纳入统计
-- 2026-10-19 复核：恢复 runner 已使用约 10.6 GB GPU 显存进入真实 rollout；Dashboard 本地 `/healthz` 正常
+- 正式 baseline 最终结果：`libero_spatial` 98/100、`libero_object` 100/100、`libero_goal` 97/100、`libero_10` 97/100；合计 392/400（98.0%，Wilson 95% CI 96.1%-99.0%）。旧 `libero_10` 半截过程未纳入统计，最终 suite 已从头完成
+- 2026-10-19 复核：四套 `eval_info.json`、400 个主视角 MP4 和总 `summary.json/csv/md` 均已生成，`status.json` 为 `complete`；Dashboard 本地 `/healthz` 正常
 - Git：remote 已切换为 GitHub SSH；服务器认证身份为 `cosmorithm`，`main` 已成功推送至提交 `e8f5df4`
 - 阶段中文报告：[`reports/Pi05-LIBERO-项目状态报告-2026-10-19.pdf`](reports/Pi05-LIBERO-项目状态报告-2026-10-19.pdf)
+- 详细最终报告：[`reports/Pi05-LIBERO-详细最终技术报告-2026-10-19.pdf`](reports/Pi05-LIBERO-详细最终技术报告-2026-10-19.pdf)
 
 ## 登录
 
@@ -464,7 +465,7 @@ cd /root/autodl-tmp/pi05-libero-reproduction
 - 未下载 LIBERO 演示/训练数据
 - 未运行 Pi0.5 微调或训练
 
-Pi0.5 单任务真实推理和七视角 Web 控制已经在当前持久化项目中跑通。旧容器的正式 baseline 曾中断；当前容器已保存前三套完整结果，并正在仅重跑未完成的 `libero_10`。多 seed 平均和微调仍放在完整单 seed 基线之后。
+Pi0.5 单任务真实推理和七视角 Web 控制已经在当前持久化项目中跑通。旧容器的正式 baseline 曾中断；当前容器已完成四套完整结果，共 400 episode。多 seed 平均、失败回放分析和微调仍放在这份单 seed 基线之后。
 
 ## 工作记录
 

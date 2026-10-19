@@ -6,7 +6,7 @@
 
 - 目标：在单张 RTX 4090D 24GB 上搭建并复现 Pi0.5 + LIBERO。
 - 这是一个独立项目，不与此前的 NLP、Agent/Infra、CoT 或 GPU Keeper 项目混合。
-- 当前阶段：2026-10-19 当前容器已恢复环境、模型、Dashboard 和正式 benchmark。`libero_spatial`、`libero_object`、`libero_goal` 共 300 个 episode 已完整落盘；`libero_10` 正在从头恢复。GitHub SSH 已验证并可直接推送。
+- 当前阶段：2026-10-19 当前容器已恢复环境、模型、Dashboard 和正式 benchmark。四套 LIBERO suite 共 400 个 episode 已完整落盘，最终为 392/400（98.0%）；GitHub SSH 已验证并可直接推送。
 
 ## 服务器与目录
 
@@ -41,11 +41,11 @@
 
 - 本机别名 `pi05-4090d` 已更新至端口 `21897`，免交互登录验证到当前主机名 `autodl-container-2e4d46bfa5-2ad818b7`。
 - 上一容器的 `screen` 会话在容器变更后死亡。持久盘没有丢失：三套已完成 benchmark 的 `eval_info.json`、元数据和视频仍存在；第四套 `libero_10` 没有生成 `eval_info.json`，不能被视为完成。
-- 已完成的正式结果（seed 1000、每 task 10 episodes）：`libero_spatial` 98/100（98.0%，Wilson 95% CI 93.0%-99.4%）、`libero_object` 100/100（100.0%，96.3%-100.0%）、`libero_goal` 97/100（97.0%，91.5%-99.0%）。阶段合计为 295/300（98.3%），尚不是四套最终平均。
-- 已重新启动 `screen` 会话 `libero-web` 和 `pi05-baseline`。runner 会自动跳过前三套已有 `eval_info.json` 的结果，只从头评测 `libero_10`；报告时 GPU 显存约 10.6 GB，已经进入真实 rollout。
+- 最终正式结果（seed 1000、每 task 10 episodes）：`libero_spatial` 98/100（98.0%，Wilson 95% CI 93.0%-99.4%）、`libero_object` 100/100（100.0%，96.3%-100.0%）、`libero_goal` 97/100（97.0%，91.5%-99.0%）、`libero_10` 97/100（97.0%，91.5%-99.0%）。总体为 392/400（98.0%，96.1%-99.0%）。
+- `pi05-baseline` 已正常退出；四套 `eval_info.json`、各 100 个 MP4、总 `summary.json/csv/md` 和 `status.json: complete` 已核验。仅 `libero-web` Dashboard 继续运行。`libero_10` 的新一次评测耗时约 1339.1 秒；总 evaluator 时间约 3344.8 秒。
 - Dashboard 本地 `http://127.0.0.1:6006/healthz` 返回 `{"status":"ok","version":3}`；公网 6006 映射仍需在 SeetaCloud 面板指向当前容器。
 - 服务器生成专用 ed25519 GitHub key 后，用户已登记其公钥；`ssh -T git@github.com` 成功认证为 `cosmorithm`。项目 remote 改为 `git@github.com:cosmorithm/pi05-libero-reproduction.git`，`main` 已从 `263e28c` 推送至 `e8f5df4`。
-- 中文阶段报告位于 `reports/Pi05-LIBERO-项目状态报告-2026-10-19.pdf`；本地下载副本由当前会话提供。
+- 中文阶段报告位于 `reports/Pi05-LIBERO-项目状态报告-2026-10-19.pdf`；详细最终技术报告位于 `reports/Pi05-LIBERO-详细最终技术报告-2026-10-19.pdf`，二者均已加入 Git。
 
 ### 新服务器迁移状态（2026-10-17）
 
@@ -116,7 +116,7 @@ cat outputs/smoke/report.json
 
 ## 下一步
 
-1. 等待并核验 `libero_10`，生成完整四套 400 episode 汇总；不要把阶段性 295/300 当作最终结果。
+1. 对 400 episode 完整基线增加多 seed，并保存/分析 8 个失败实例；不要把固定 seed 98.0% 直接当成泛化或真机性能。
 2. 为已启动的 Dashboard 配置新公网映射。
-3. 基线稳定后增加多 seed、保存失败实例，并再评估常驻模型 worker 与 24GB 显存下的参数高效微调。
+3. 基线稳定后再评估常驻模型 worker 与 24GB 显存下的参数高效微调；若开始 sim-to-real，先做标定、遥操作采集、action 限幅和影子模式。
 
