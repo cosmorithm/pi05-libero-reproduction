@@ -6,21 +6,23 @@
 
 - 目标：在单张 RTX 4090D 24GB 上搭建并复现 Pi0.5 + LIBERO。
 - 这是一个独立项目，不与此前的 NLP、Agent/Infra、CoT 或 GPU Keeper 项目混合。
-- 当前阶段：2026-10-19 当前容器已恢复环境、模型、Dashboard 和正式 benchmark。四套 LIBERO suite 共 400 个 episode 已完整落盘，最终为 392/400（98.0%）；GitHub SSH 已验证并可直接推送。
+- 当前阶段：2026-10-19 当前容器已恢复环境、模型、Dashboard 和正式 benchmark。四套 `seed=1000` LIBERO suite 共 400 个 episode 已完整落盘，最终为 392/400（98.0%）；`seed=2000` 的三个共有 suite 已完成，为 292/300（97.3%）。GitHub SSH 已验证并可直接推送。
 
 ## 服务器与目录
 
 - SSH 别名：`pi05-4090d`
-- 实际入口：`root@connect.westb.seetacloud.com:21897`
-- 主机名：`autodl-container-2e4d46bfa5-2ad818b7`
+- 实际入口：`root@connect.westb.seetacloud.com:13591`
+- 主机名：`autodl-container-3f5d4d8d63-18907193`
 - GPU：NVIDIA GeForce RTX 4090 D，24 GB
 - 远端项目根目录：`/root/autodl-tmp/pi05-libero-reproduction`
 - Python 虚拟环境：`/root/autodl-tmp/pi05-libero-reproduction/.venv`
+- OpenPI JAX 独立环境：`/root/autodl-tmp/pi05-libero-reproduction/.venv-openpi`（准备中）
+- OpenPI 源码：`/root/autodl-tmp/pi05-libero-reproduction/third_party/openpi`（固定 commit `215abfb217dbac7d5f1273282331b9b1866c0479`）
 - Hugging Face 缓存：`/root/autodl-tmp/pi05-libero-reproduction/cache/huggingface`
 - pip 缓存：`/root/autodl-tmp/pi05-libero-reproduction/cache/pip`
 - LIBERO 资产：`/root/autodl-tmp/pi05-libero-reproduction/assets`
 - 输出目录：`/root/autodl-tmp/pi05-libero-reproduction/outputs`
-- 项目根目录已初始化服务器本地 Git（分支 `main`）。仓库只跟踪 README、PROJECT_MEMORY、固定 LeRobot commit 和 `scripts/`；`.venv`、权重、资产、缓存、日志、输出和 `.dashboard_token` 均被忽略。每次代码或文档改动都应先验证再在服务器提交。
+- 项目根目录已初始化服务器本地 Git（分支 `main`）。仓库只跟踪 README、PROJECT_MEMORY、固定 LeRobot commit 和 `scripts/`；`.venv`、`.venv-openpi`、`third_party/`、权重、资产、缓存、日志、输出和 `.dashboard_token` 均被忽略。每次代码或文档改动都应先验证再在服务器提交。
 
 ## 已执行事项
 
@@ -39,13 +41,18 @@
 
 ### 当前容器恢复与基线进度（2026-10-19）
 
-- 本机别名 `pi05-4090d` 已更新至端口 `21897`，免交互登录验证到当前主机名 `autodl-container-2e4d46bfa5-2ad818b7`。
+- 本机别名 `pi05-4090d` 已更新至端口 `13591`，免交互登录验证到当前主机名 `autodl-container-3f5d4d8d63-18907193`。
 - 上一容器的 `screen` 会话在容器变更后死亡。持久盘没有丢失：三套已完成 benchmark 的 `eval_info.json`、元数据和视频仍存在；第四套 `libero_10` 没有生成 `eval_info.json`，不能被视为完成。
 - 最终正式结果（seed 1000、每 task 10 episodes）：`libero_spatial` 98/100（98.0%，Wilson 95% CI 93.0%-99.4%）、`libero_object` 100/100（100.0%，96.3%-100.0%）、`libero_goal` 97/100（97.0%，91.5%-99.0%）、`libero_10` 97/100（97.0%，91.5%-99.0%）。总体为 392/400（98.0%，96.1%-99.0%）。
+- `seed=2000` 第一阶段（2026-10-19）：`libero_spatial` 97/100、`libero_object` 98/100、`libero_goal` 97/100，三 suite 合计 292/300（97.3%，94.8%-98.7%）。object 从 seed 1000 的 100/100 降到 98/100，spatial 从 98/100 降到 97/100，goal 持平 97/100。
+- 失败 task：seed 2000 的 `libero_spatial` task 5 为 7/10；`libero_object` task 3、9 各 9/10；`libero_goal` task 2 为 9/10、task 3 为 8/10。全部 300 个 MP4 和三份 `eval_info.json` 已核验，runner 退出码 0，screen 会话已退出。
+- 两个 seed 的共有三 suite 合并为 587/600（97.8%，Wilson 95% CI 96.2%-98.9%）。`libero_10` 的 seed 2000 尚未运行，不能称为完整多 seed 结论。
+- 阶段性多 seed 报告为 `reports/pi05-libero-multiseed-2026-10-19.md`，应与 `seed=1000` 完整基线报告分开引用。
 - `pi05-baseline` 已正常退出；四套 `eval_info.json`、各 100 个 MP4、总 `summary.json/csv/md` 和 `status.json: complete` 已核验。仅 `libero-web` Dashboard 继续运行。`libero_10` 的新一次评测耗时约 1339.1 秒；总 evaluator 时间约 3344.8 秒。
 - Dashboard 本地 `http://127.0.0.1:6006/healthz` 返回 `{"status":"ok","version":3}`；公网 6006 映射仍需在 SeetaCloud 面板指向当前容器。
 - 服务器生成专用 ed25519 GitHub key 后，用户已登记其公钥；`ssh -T git@github.com` 成功认证为 `cosmorithm`。项目 remote 改为 `git@github.com:cosmorithm/pi05-libero-reproduction.git`，`main` 已从 `263e28c` 推送至 `e8f5df4`。
 - 中文阶段报告位于 `reports/Pi05-LIBERO-项目状态报告-2026-10-19.pdf`；详细最终技术报告位于 `reports/Pi05-LIBERO-详细最终技术报告-2026-10-19.pdf`，二者均已加入 Git。
+- 官方 OpenPI JAX 方案已开始准备：源码固定到当前 main commit，独立 `.venv-openpi` 环境安装中，目标 checkpoint 为 `gs://openpi-assets/checkpoints/pi05_libero/`。服务器无法直连 Google Storage，后续需使用本机可访问路径传输或明确可复现镜像，未下载完成前不加载模型。
 
 ### 新服务器迁移状态（2026-10-17）
 
@@ -126,7 +133,8 @@ cat outputs/smoke/report.json
 
 ## 下一步
 
-1. 对 400 episode 完整基线增加多 seed，并保存/分析 8 个失败实例；不要把固定 seed 98.0% 直接当成泛化或真机性能。
-2. 为已启动的 Dashboard 配置新公网映射。
-3. 基线稳定后再评估常驻模型 worker 与 24GB 显存下的参数高效微调；若开始 sim-to-real，先做标定、遥操作采集、action 限幅和影子模式。
+1. 完成 `libero_10` 的 `seed=2000`，再把四个 suite 的 seed 1000/2000 结果合并，并逐失败视频复核轨迹。
+2. 完成 OpenPI JAX `pi05_libero` checkpoint 与独立环境的准备，先跑单 episode action sanity check，再跑内部 VLM 语言探针 pilot。
+3. 为已启动的 Dashboard 配置新公网映射。
+4. 基线稳定后再评估常驻模型 worker 与 24GB 显存下的参数高效微调；若开始 sim-to-real，先做标定、遥操作采集、action 限幅和影子模式。
 

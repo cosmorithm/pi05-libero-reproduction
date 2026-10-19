@@ -6,11 +6,11 @@
 /root/autodl-tmp/pi05-libero-reproduction
 ```
 
-旧实例已完成仿真部署、七视角可视化和真实 π0.5 闭环评测。项目于 2026-10-17 迁移到新服务器：代码、Git 历史、运行环境、586 个 LIBERO assets、Pi0.5 checkpoint、PaliGemma tokenizer、七视角 smoke、本地 Dashboard 和真实闭环均已恢复并复验。2026-10-19 已完成三套正式 LIBERO baseline（300 回合），第四套正在新容器恢复运行。
+旧实例已完成仿真部署、七视角可视化和真实 π0.5 闭环评测。项目于 2026-10-17 迁移到新服务器：代码、Git 历史、运行环境、586 个 LIBERO assets、Pi0.5 checkpoint、PaliGemma tokenizer、七视角 smoke、本地 Dashboard 和真实闭环均已恢复并复验。2026-10-19 已完成正式 LIBERO baseline 和第一组多 seed 评测。
 
 ## 当前状态
 
-> 当前入口：`root@connect.westb.seetacloud.com:21897`，主机名为 `autodl-container-2e4d46bfa5-2ad818b7`，本机可用 `ssh pi05-4090d` 登录。环境、assets、checkpoint、tokenizer、真实评测和本地 Dashboard 已在此容器复验；公网 6006 映射仍需指向当前容器。
+> 当前入口：`root@connect.westb.seetacloud.com:13591`，主机名为 `autodl-container-3f5d4d8d63-18907193`，本机可用 `ssh pi05-4090d` 登录。环境、assets、checkpoint、tokenizer、真实评测和本地 Dashboard 已在此容器复验；公网 6006 映射仍需指向当前容器。
 
 - 服务器：RTX 4090 D 24 GB，CUDA runtime 12.8
 - Python 3.12.3、PyTorch 2.11.0+cu128、torchvision 0.26.0+cu128
@@ -25,10 +25,12 @@
 - 新服务器 Dashboard 真实模式：第 74 步成功，七路 H.264 256×256 视频均为 75 帧
 - 新服务器 Benchmark smoke：`libero_spatial` task 0、seed 7，1/1 episode 成功，runner 结果和汇总链路通过
 - 正式 baseline 最终结果：`libero_spatial` 98/100、`libero_object` 100/100、`libero_goal` 97/100、`libero_10` 97/100；合计 392/400（98.0%，Wilson 95% CI 96.1%-99.0%）。旧 `libero_10` 半截过程未纳入统计，最终 suite 已从头完成
+- `seed=2000` 多 seed 第一阶段：`libero_spatial` 97/100、`libero_object` 98/100、`libero_goal` 97/100，三 suite 合计 292/300（97.3%，Wilson 95% CI 94.8%-98.7%）。与 `seed=1000` 的共有三 suite 合并为 587/600（97.8%）
 - 2026-10-19 复核：四套 `eval_info.json`、400 个主视角 MP4 和总 `summary.json/csv/md` 均已生成，`status.json` 为 `complete`；Dashboard 本地 `/healthz` 正常
 - Git：remote 已切换为 GitHub SSH；服务器认证身份为 `cosmorithm`，`main` 已成功推送至提交 `e8f5df4`
 - 阶段中文报告：[`reports/Pi05-LIBERO-项目状态报告-2026-10-19.pdf`](reports/Pi05-LIBERO-项目状态报告-2026-10-19.pdf)
 - 详细最终报告：[`reports/Pi05-LIBERO-详细最终技术报告-2026-10-19.pdf`](reports/Pi05-LIBERO-详细最终技术报告-2026-10-19.pdf)
+- 多 seed 阶段性报告：[`reports/pi05-libero-multiseed-2026-10-19.md`](reports/pi05-libero-multiseed-2026-10-19.md)
 
 ## 登录
 
@@ -301,6 +303,22 @@ screen -dmS pi05-overnight bash scripts/run_overnight_benchmark.sh
 ```
 
 该脚本会等待较短的 Spatial 前台任务结束后继续运行四套 suite，适合作为长时间无人值守任务。
+
+### 多 seed 第一阶段结果
+
+`seed=2000` 已跑完三个共有 suite：
+
+| Suite | seed=1000 | seed=2000 |
+| --- | ---: | ---: |
+| `libero_spatial` | 98/100 | 97/100 |
+| `libero_object` | 100/100 | 98/100 |
+| `libero_goal` | 97/100 | 97/100 |
+| 合计 | 295/300 | 292/300 |
+
+两 seed 的共有三 suite 合并为 587/600（97.8%，Wilson 95% CI 96.2%-98.9%）。
+`libero_10` 的 `seed=2000` 尚未运行，因此这一节只是部分多 seed 结果。
+逐 task 失败清单、核验项和解释边界见
+[`reports/pi05-libero-multiseed-2026-10-19.md`](reports/pi05-libero-multiseed-2026-10-19.md)。
 
 ### 2026-10-17 兼容性审计记录
 

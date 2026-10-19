@@ -3,6 +3,7 @@
 
 # Virtual environment and downloaded artifacts
 .venv/
+.venv-openpi/
 assets/
 cache/
 checkpoints/
@@ -10,6 +11,7 @@ datasets/
 home/
 lerobot/
 lerobot-*.tar.gz
+third_party/
 
 # Runtime output
 logs/
