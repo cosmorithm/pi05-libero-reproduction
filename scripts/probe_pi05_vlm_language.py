@@ -188,6 +188,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--image", type=Path, required=True)
+    parser.add_argument(
+        "--processor",
+        type=Path,
+        default=Path("assets/paligemma-processor"),
+        help="Local PaliGemma tokenizer/processor directory (no model weights are downloaded).",
+    )
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--limit", type=int, default=100)
     parser.add_argument("--max-new-tokens", type=int, default=32)
@@ -200,6 +206,11 @@ def main() -> int:
         raise FileNotFoundError(args.checkpoint)
     if not args.image.is_file():
         raise FileNotFoundError(args.image)
+    if not args.processor.is_dir():
+        raise FileNotFoundError(
+            f"PaliGemma processor not found: {args.processor}. "
+            "Download only tokenizer/processor files to this local path first."
+        )
     if not 1 <= args.limit <= 100:
         raise ValueError("--limit must be in [1, 100]")
 
@@ -226,6 +237,7 @@ def main() -> int:
         "started_at_utc": now,
         "checkpoint": str(args.checkpoint.resolve()),
         "image": str(args.image.resolve()),
+        "processor": str(args.processor.resolve()),
         "image_sha256": image_sha256,
         "questions_total": args.limit,
         "decoding": {"do_sample": False, "max_new_tokens": args.max_new_tokens, "use_cache": True},
@@ -248,7 +260,7 @@ def main() -> int:
     vlm.eval()
     print(f"Loaded VLM: {vlm.__class__.__name__}", flush=True)
 
-    processor = AutoProcessor.from_pretrained("google/paligemma-3b-pt-224", local_files_only=True)
+    processor = AutoProcessor.from_pretrained(args.processor, local_files_only=True)
     # The cached processor originates from 224px PaliGemma.  Pi0.5 was instantiated at
     # 256px; update both geometry and image-token prefix so the VLM's visual features and
     # input image-token positions agree (18x18 = 324 tokens).
