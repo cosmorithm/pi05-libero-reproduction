@@ -4,6 +4,7 @@
 # Virtual environment and downloaded artifacts
 .venv/
 .venv-openpi/
+.venv-openpi-lean/
 assets/
 cache/
 checkpoints/
