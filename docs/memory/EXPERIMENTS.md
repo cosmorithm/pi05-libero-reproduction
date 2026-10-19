@@ -10,6 +10,7 @@
 | VLM-TORCH | 2026-10-19 | Torch Pi0.5 内部 PaliGemma 直接文本探针 | complete | 100/100 调用成功，0 可读英文；`outputs/vlm_probe/full_100_20261019/` |
 | VLM-JAX | 2026-10-19 | 官方 OpenPI JAX `pi05_libero` 内部 PaliGemma 探针 | preparing | 环境安装、checkpoint 下载和脚本准备中；尚未产生结果 |
 | VLM-JAX-ENV | 2026-10-19 | JAX 探针环境迁移 | preparing | checkpoint 已完成；完整 `.venv-openpi` 安装过慢，已决策使用独立 `.venv-openpi-lean`，不修改 LeRobot `.venv`；任务 `task-openpi-jax-lean-env` |
+| VLM-JAX-ENV-AUDIT | 2026-10-20 | 精简 JAX 环境离线就绪审计 | complete | 安装退出码 0；核心 import/config 通过；checkpoint 16 文件约 12 GiB、tokenizer/norm stats/image 在本地；GPU 关闭，CUDA device 与 checkpoint restore 待开机验证 |
 
 ## 实验记录模板
 

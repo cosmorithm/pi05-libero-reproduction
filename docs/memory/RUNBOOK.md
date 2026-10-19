@@ -66,17 +66,20 @@ curl http://127.0.0.1:6006/healthz
 
 ```bash
 cd /root/autodl-tmp/pi05-libero-reproduction
-screen -ls
-tail -f logs/openpi-assets.log
-tail -f logs/openpi-setup.log
-.venv-openpi/bin/python -c 'import jax, flax, openpi; print(jax.__version__)'
+cat logs/openpi-lean-setup.exitcode
+.venv-openpi-lean/bin/python -c 'import jax, flax, openpi, orbax.checkpoint; print(jax.__version__)'
+grep -ao OPENPI_CHECKPOINT_DOWNLOAD_COMPLETE logs/openpi-assets.log
 ```
 
-服务器直连 GCS 时使用 IPv4：
+GPU 重新开启后，只使用这个入口启动探针；它会拒绝无 GPU、缺权重或安装未完成的状态：
 
 ```bash
-curl -4 -I https://storage.googleapis.com/openpi-assets/
+./scripts/start_openpi_jax_probe.sh
+tail -f logs/openpi-jax-probe-orchestrator.log
 ```
+
+runner 会再次断言 JAX 枚举到 CUDA device，随后才加载本地 checkpoint，并依次运行
+flip pilot、no-flip pilot 和 100 题正式批量。此阶段不应发生新的模型/CUDA 大包下载。
 
 ## 记忆维护
 

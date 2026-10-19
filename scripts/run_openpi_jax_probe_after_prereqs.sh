@@ -7,7 +7,6 @@ cd "$project_root"
 
 task_cli=(./.venv/bin/python scripts/project_memory.py)
 probe_python=.venv-openpi-lean/bin/python
-base_site=$(./.venv/bin/python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
 probe_script=scripts/probe_pi05_vlm_language_jax.py
 checkpoint=checkpoints/openpi-pi05-libero
 image=outputs/smoke/image.png
@@ -38,7 +37,7 @@ wait_for_install() {
       --evidence "$install_log" --evidence "$install_exit" --tag openpi --tag jax --tag vlm-probe
     return 1
   fi
-  PYTHONPATH="$base_site${PYTHONPATH:+:$PYTHONPATH}" "$probe_python" -c 'import flax, jax, openpi, orbax.checkpoint; print(jax.__version__)'
+  "$probe_python" -c 'import flax, jax, openpi, orbax.checkpoint; print(jax.__version__)'
   finish_task task-openpi-jax-lean-env complete "OpenPI lean JAX install and import verification completed without modifying .venv." \
     --evidence "$install_log" --evidence "$install_exit" --tag openpi --tag jax --tag environment
 }
@@ -72,10 +71,23 @@ wait_for_gpu() {
   fi
 }
 
+wait_for_cuda() {
+  while ! nvidia-smi -L >/dev/null 2>&1; do
+    sleep 20
+  done
+  "$probe_python" - <<'PY'
+import jax
+
+devices = jax.devices()
+if not any(device.platform in {"cuda", "gpu"} for device in devices):
+    raise RuntimeError(f"JAX has no CUDA device: {devices}")
+print(devices)
+PY
+}
+
 run_probe() {
   local output_dir=$1
   shift
-  PYTHONPATH="$base_site${PYTHONPATH:+:$PYTHONPATH}" \
   XLA_PYTHON_CLIENT_PREALLOCATE=false \
   XLA_PYTHON_CLIENT_MEM_FRACTION=0.70 \
   "$probe_python" "$probe_script" \
@@ -88,6 +100,7 @@ run_probe() {
 wait_for_install
 wait_for_assets
 wait_for_gpu
+wait_for_cuda
 
 "${task_cli[@]}" task update --task-id "$task_id" --status running \
   --summary "OpenPI JAX environment, official checkpoint, and GPU are ready; running controlled direct-VLM pilots and the formal batch." \

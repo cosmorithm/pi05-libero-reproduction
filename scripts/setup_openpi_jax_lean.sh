@@ -30,17 +30,28 @@ fi
   'tqdm-loggable>=0.2' 'typing-extensions>=4.12.2' 'tyro>=0.9.5' \
   'wandb>=0.19.1' 'filelock>=3.16.1' 'beartype==0.19.0' 'chex==0.1.90' \
   'treescope>=0.1.7' 'transformers==4.53.2' 'rich>=14.0.0' 'polars>=1.30.0' \
-  safetensors
+  'websockets>=11.0' safetensors
 
 "${pip[@]}" install --no-deps -e third_party/openpi/packages/openpi-client -e third_party/openpi
 
 # The isolated environment shadows only the packages above.  It reads the
-# working Torch/CUDA runtime from .venv without modifying it.
-PYTHONPATH="$base_site${PYTHONPATH:+:$PYTHONPATH}" "$venv/bin/python" - <<'PY'
+# working Torch/CUDA runtime from .venv without modifying it.  A .pth entry is
+# appended after the lean site-packages, so the lean NumPy/Transformers pins win.
+lean_site=$("$venv/bin/python" -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
+printf '%s\n' "$base_site" > "$lean_site/zz_verified_lerobot_base.pth"
+
+"$venv/bin/python" - <<'PY'
 import flax
 import jax
 import openpi
 import orbax.checkpoint
 import torch
-print({"jax": jax.__version__, "torch_from_base": torch.__version__})
+import numpy
+import transformers
+print({
+    "jax": jax.__version__,
+    "numpy": numpy.__version__,
+    "torch_from_base": torch.__version__,
+    "transformers": transformers.__version__,
+})
 PY
