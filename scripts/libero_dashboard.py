@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import html
 import hmac
 import json
+import mimetypes
 import os
 import secrets
 import subprocess
@@ -15,7 +17,7 @@ from collections import deque
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 
 
 ROOT = Path("/root/autodl-tmp/pi05-libero-reproduction")
@@ -24,6 +26,7 @@ REPORT = OUTPUT / "report.json"
 PROGRESS = OUTPUT / "progress.json"
 TOKEN_FILE = ROOT / ".dashboard_token"
 RUN_LOG = ROOT / "logs" / "dashboard-run.log"
+BENCHMARK_ROOT = ROOT / "outputs" / "benchmark"
 FRAME_NAMES = {f"image{suffix}.png" for suffix in ("", "2", "3", "4", "5", "6", "7")}
 SUITES = {
     "libero_spatial": 10,
@@ -61,7 +64,7 @@ INDEX_HTML = r"""<!doctype html>
   </style>
 </head>
 <body><main class="shell">
-  <header><div><div class="eyebrow">Pi0.5 Reproduction · All Camera Monitor</div><h1 class="title">LIBERO Observation Deck</h1><p class="subtitle">7 路 MuJoCo 相机 · π0.5 策略 · GPU 遥测</p></div><div class="connection"><i id="dot" class="dot"></i><span id="connection">正在连接</span></div></header>
+  <header><div><div class="eyebrow">Pi0.5 Reproduction · All Camera Monitor</div><h1 class="title">LIBERO Observation Deck</h1><p class="subtitle">7 路 MuJoCo 相机 · π0.5 策略 · GPU 遥测</p></div><div class="connection"><a id="benchmarkLink" href="/benchmark/" style="color:var(--cyan);text-decoration:none;font:650 11px/1 ui-monospace,monospace">评测回放</a><i id="dot" class="dot"></i><span id="connection">正在连接</span></div></header>
   <section class="card mission"><div><small>Current language instruction</small><h2 id="instruction">运行仿真后显示当前任务指令</h2></div><div id="missionTag" class="pill">NO ACTIVE EPISODE</div></section>
   <div class="progress-wrap"><span id="phase" class="progress-state">等待运行</span><div class="track"><div id="bar" class="bar"></div></div><span id="stepCount">0 / 0</span></div>
   <section class="lower">
@@ -94,6 +97,7 @@ INDEX_HTML = r"""<!doctype html>
 </main>
 <script>
   const q=new URLSearchParams(location.search);let token=q.get('token')||localStorage.getItem('liberoToken')||'';if(q.get('token'))localStorage.setItem('liberoToken',token);
+  el('benchmarkLink').href='/benchmark/'+(token?`?token=${encodeURIComponent(token)}`:'');
   const api=p=>`${p}?token=${encodeURIComponent(token)}`,el=id=>document.getElementById(id);let lastStamp='';const cams=['','2','3','4','5','6','7'];
   const maxSteps={libero_spatial:280,libero_object:280,libero_goal:300,libero_10:520,libero_90:400};
   const syncStepLimit=()=>{const suite=el('suite').value,mode=el('actionMode').value;el('task').max=suite==='libero_90'?89:9;if(mode==='pi05'){el('steps').max=maxSteps[suite]||280;if(el('steps').value==='80')el('steps').value=maxSteps[suite]||280}else{el('steps').max=1000}};
@@ -205,6 +209,60 @@ def run_simulation(request: dict) -> None:
             state["finished_at"] = time.time()
 
 
+def benchmark_page(relative: str, token: str) -> bytes:
+    target = (BENCHMARK_ROOT / relative).resolve()
+    root = BENCHMARK_ROOT.resolve()
+    if target != root and root not in target.parents:
+        return b"not found"
+
+    def href(path: str, label: str) -> str:
+        suffix = f"?token={quote(token)}" if token else ""
+        escaped = html.escape(label, quote=True)
+        return f'<a href="/benchmark/{quote(path)}{suffix}">{escaped}</a>'
+
+    title = "Pi0.5 LIBERO Benchmark Replays" if not relative else html.escape(relative)
+    entries = []
+    if relative:
+        parent = target.parent.relative_to(root)
+        entries.append(f'<li class="parent">{href(str(parent) if str(parent) != "." else "", ".. / parent directory")}</li>')
+    directories = sorted((path for path in target.iterdir() if path.is_dir()), key=lambda path: path.name)
+    files = sorted((path for path in target.iterdir() if path.is_file()), key=lambda path: path.name)
+    for path in directories:
+        rel = str(path.relative_to(root))
+        entries.append(f'<li class="dir">{href(rel, path.name + "/")}</li>')
+    videos = [path for path in files if path.suffix.lower() == ".mp4"]
+    for path in files:
+        if path in videos:
+            continue
+        rel = str(path.relative_to(root))
+        entries.append(f'<li class="file">{href(rel, path.name)}</li>')
+    video_html = ""
+    if len(videos) <= 20:
+        cards = []
+        for path in videos:
+            rel = str(path.relative_to(root))
+            suffix = f"?token={quote(token)}" if token else ""
+            source = f"/benchmark/{quote(rel)}{suffix}"
+            cards.append(
+                "<article class=\"video\"><video controls preload=\"metadata\" src=\""
+                f'{html.escape(source, quote=True)}"></video><div>{html.escape(path.name)}</div></article>'
+            )
+        video_html = f'<section class="videos">{"".join(cards)}</section>'
+    body = (
+        "<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"utf-8\">"
+        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+        f"<title>{title}</title><style>"
+        "body{max-width:1180px;margin:36px auto;padding:0 20px;color:#e6f2f4;background:#071013;font-family:Inter,system-ui,sans-serif}"
+        "a{color:#66d9c8;text-decoration:none}a:hover{text-decoration:underline}ul{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:9px;padding:0;list-style:none}"
+        "li{padding:11px 13px;border:1px solid #20353b;border-radius:8px;background:#0e1a1f;font-family:ui-monospace,monospace;overflow-wrap:anywhere}"
+        ".videos{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:22px}.video{background:#0e1a1f;border:1px solid #20353b;border-radius:8px;padding:10px;font-family:ui-monospace,monospace;font-size:12px}"
+        "video{width:100%;aspect-ratio:1;background:#000;border-radius:5px}h1{font-size:30px}h2{font-size:18px;margin-top:26px}"
+        "</style></head><body><h1>Pi0.5 LIBERO Benchmark Replays</h1>"
+        f"<p>{title}</p><ul>{''.join(entries)}</ul>{video_html}</body></html>"
+    )
+    return body.encode("utf-8")
+
+
 class DashboardHandler(BaseHTTPRequestHandler):
     server_version = "LIBERODashboard/3.0"
 
@@ -231,6 +289,61 @@ class DashboardHandler(BaseHTTPRequestHandler):
         supplied = query.get("token", [""])[0]
         return bool(supplied) and hmac.compare_digest(supplied, TOKEN)
 
+    def send_benchmark_file(self, relative: str) -> None:
+        target = (BENCHMARK_ROOT / relative).resolve()
+        root = BENCHMARK_ROOT.resolve()
+        if target != root and root not in target.parents:
+            self.send_json({"error": "not found"}, HTTPStatus.NOT_FOUND)
+            return
+        if not target.is_file():
+            self.send_json({"error": "not found"}, HTTPStatus.NOT_FOUND)
+            return
+        content_type = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+        size = target.stat().st_size
+        range_header = self.headers.get("Range", "")
+        if range_header.startswith("bytes="):
+            try:
+                start_text, end_text = range_header.removeprefix("bytes=").split("-", 1)
+                start = int(start_text or "0")
+                end = int(end_text) if end_text else size - 1
+                if start < 0 or end < start or start >= size:
+                    raise ValueError
+                end = min(end, size - 1)
+            except (TypeError, ValueError):
+                self.send_response(HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+                self.send_header("Content-Range", f"bytes */{size}")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            length = end - start + 1
+            self.send_response(HTTPStatus.PARTIAL_CONTENT)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(length))
+            self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Cache-Control", "private, max-age=3600")
+            self.end_headers()
+            with target.open("rb") as file:
+                file.seek(start)
+                remaining = length
+                while remaining:
+                    chunk = file.read(min(64 * 1024, remaining))
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+                    remaining -= len(chunk)
+            return
+        payload = target.read_bytes()
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(payload)))
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Cache-Control", "private, max-age=3600")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "same-origin")
+        self.end_headers()
+        self.wfile.write(payload)
+
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         query = parse_qs(parsed.query)
@@ -242,6 +355,21 @@ class DashboardHandler(BaseHTTPRequestHandler):
             return
         if not self.authorized(query):
             self.send_json({"error": "unauthorized"}, HTTPStatus.UNAUTHORIZED)
+            return
+        if parsed.path in {"/benchmark", "/benchmark/"}:
+            self.send_bytes(benchmark_page("", query.get("token", [""])[0]), "text/html; charset=utf-8")
+            return
+        if parsed.path.startswith("/benchmark/"):
+            relative = parsed.path.removeprefix("/benchmark/")
+            target = (BENCHMARK_ROOT / relative).resolve()
+            root = BENCHMARK_ROOT.resolve()
+            if target != root and root not in target.parents:
+                self.send_json({"error": "not found"}, HTTPStatus.NOT_FOUND)
+                return
+            if target.is_dir():
+                self.send_bytes(benchmark_page(relative, query.get("token", [""])[0]), "text/html; charset=utf-8")
+                return
+            self.send_benchmark_file(relative)
             return
         if parsed.path == "/api/status":
             frame_paths = [OUTPUT / name for name in FRAME_NAMES]

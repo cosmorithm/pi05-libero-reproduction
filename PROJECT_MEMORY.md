@@ -50,6 +50,7 @@
 - 阶段性多 seed 报告为 `reports/pi05-libero-multiseed-2026-10-19.md`，应与 `seed=1000` 完整基线报告分开引用。
 - `pi05-baseline` 已正常退出；四套 `eval_info.json`、各 100 个 MP4、总 `summary.json/csv/md` 和 `status.json: complete` 已核验。仅 `libero-web` Dashboard 继续运行。`libero_10` 的新一次评测耗时约 1339.1 秒；总 evaluator 时间约 3344.8 秒。
 - Dashboard 本地 `http://127.0.0.1:6006/healthz` 返回 `{"status":"ok","version":3}`；公网 6006 映射仍需在 SeetaCloud 面板指向当前容器。
+- 当前公网入口为 `https://u580081-8d63-18907193.westb.seetacloud.com:8443/`，内部映射到 `6006`。换容器后原 Dashboard 会话死亡，已重启 `libero-web`，并在控制台中新增 `/benchmark/` 历史评测回放入口。
 - 服务器生成专用 ed25519 GitHub key 后，用户已登记其公钥；`ssh -T git@github.com` 成功认证为 `cosmorithm`。项目 remote 改为 `git@github.com:cosmorithm/pi05-libero-reproduction.git`，`main` 已从 `263e28c` 推送至 `e8f5df4`。
 - 中文阶段报告位于 `reports/Pi05-LIBERO-项目状态报告-2026-10-19.pdf`；详细最终技术报告位于 `reports/Pi05-LIBERO-详细最终技术报告-2026-10-19.pdf`，二者均已加入 Git。
 - 官方 OpenPI JAX 方案已开始准备：源码固定到当前 main commit，独立 `.venv-openpi` 环境安装中，目标 checkpoint 为 `gs://openpi-assets/checkpoints/pi05_libero/`。服务器无法直连 Google Storage，后续需使用本机可访问路径传输或明确可复现镜像，未下载完成前不加载模型。
