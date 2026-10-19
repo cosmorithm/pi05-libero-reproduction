@@ -278,7 +278,10 @@ def main() -> int:
         "vlm_class": vlm.__class__.__name__,
         "processor_class": processor.__class__.__name__,
         "vlm_image_size": int(vlm.config.vision_config.image_size),
-        "vlm_image_seq_length": int(vlm.config.image_seq_length),
+        # This OpenPI-compatible PaliGemma config does not expose the newer
+        # Transformers ``image_seq_length`` field.  The expected count is
+        # recorded explicitly from the Pi0.5 256px/14px geometry instead.
+        "vlm_image_seq_length": int(getattr(vlm.config, "image_seq_length", expected_image_tokens)),
     }
     write_json(manifest_path, metadata)
 
