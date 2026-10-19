@@ -97,8 +97,8 @@ INDEX_HTML = r"""<!doctype html>
 </main>
 <script>
   const q=new URLSearchParams(location.search);let token=q.get('token')||localStorage.getItem('liberoToken')||'';if(q.get('token'))localStorage.setItem('liberoToken',token);
-  el('benchmarkLink').href='/benchmark/'+(token?`?token=${encodeURIComponent(token)}`:'');
   const api=p=>`${p}?token=${encodeURIComponent(token)}`,el=id=>document.getElementById(id);let lastStamp='';const cams=['','2','3','4','5','6','7'];
+  el('benchmarkLink').href='/benchmark/'+(token?`?token=${encodeURIComponent(token)}`:'');
   const maxSteps={libero_spatial:280,libero_object:280,libero_goal:300,libero_10:520,libero_90:400};
   const syncStepLimit=()=>{const suite=el('suite').value,mode=el('actionMode').value;el('task').max=suite==='libero_90'?89:9;if(mode==='pi05'){el('steps').max=maxSteps[suite]||280;if(el('steps').value==='80')el('steps').value=maxSteps[suite]||280}else{el('steps').max=1000}};
   el('suite').addEventListener('change',syncStepLimit);el('actionMode').addEventListener('change',syncStepLimit);
