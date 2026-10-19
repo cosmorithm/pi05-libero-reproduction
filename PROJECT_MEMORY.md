@@ -60,7 +60,7 @@
 - 当前公网入口为 `https://u580081-8d63-18907193.westb.seetacloud.com:8443/`，内部映射到 `6006`。换容器后原 Dashboard 会话死亡，已重启 `libero-web`，并在控制台中新增 `/benchmark/` 历史评测回放入口。
 - 服务器生成专用 ed25519 GitHub key 后，用户已登记其公钥；`ssh -T git@github.com` 成功认证为 `cosmorithm`。项目 remote 改为 `git@github.com:cosmorithm/pi05-libero-reproduction.git`，`main` 已从 `263e28c` 推送至 `e8f5df4`。
 - 中文阶段报告位于 `reports/Pi05-LIBERO-项目状态报告-2026-10-19.pdf`；详细最终技术报告位于 `reports/Pi05-LIBERO-详细最终技术报告-2026-10-19.pdf`，二者均已加入 Git。
-- 官方 OpenPI JAX 方案已开始准备：源码固定到当前 main commit，独立 `.venv-openpi` 环境安装中，目标 checkpoint 为 `gs://openpi-assets/checkpoints/pi05_libero/`。服务器无法直连 Google Storage，后续需使用本机可访问路径传输或明确可复现镜像，未下载完成前不加载模型。
+- 官方 OpenPI JAX 方案已开始准备：源码固定到当前 main commit，独立 `.venv-openpi` 环境安装中，目标 checkpoint 为 `gs://openpi-assets/checkpoints/pi05_libero/`。服务器经 IPv4 可直连 Google Storage，下载脚本支持清单、断点续传和校验；尚未下载/安装完成前不加载模型。
 
 ### 新服务器迁移状态（2026-10-17）
 
@@ -142,7 +142,7 @@ cat outputs/smoke/report.json
 ## 下一步
 
 1. 完成 `libero_10` 的 `seed=2000`，再把四个 suite 的 seed 1000/2000 结果合并，并逐失败视频复核轨迹。
-2. 完成 OpenPI JAX `pi05_libero` checkpoint 与独立环境的准备，先跑单 episode action sanity check，再跑内部 VLM 语言探针 pilot。
+2. 等待后台前置条件编排器完成 OpenPI JAX `pi05_libero` 的依赖、权重核验与直接 VLM 探针（pilot 后 100 题）；之后生成独立报告。
 3. 为已启动的 Dashboard 配置新公网映射。
 4. 基线稳定后再评估常驻模型 worker 与 24GB 显存下的参数高效微调；若开始 sim-to-real，先做标定、遥操作采集、action 限幅和影子模式。
 

@@ -239,6 +239,15 @@ XLA_PYTHON_CLIENT_MEM_FRACTION=0.60 \
   --max-new-tokens 8
 ```
 
+当前推荐使用已启动的前置条件编排器，而不是手动抢占 GPU。它会等待 OpenPI 环境、官方权重和
+`seed=2000` 的 Torch 评测结束，再依次执行翻转 / 未翻转 pilot 与 100 题 JAX 探针：
+
+```bash
+screen -ls
+tail -80 logs/openpi-jax-probe-orchestrator.log
+cat logs/openpi-jax-probe-orchestrator.exitcode 2>/dev/null || true
+```
+
 ### 7. 记忆系统接口
 
 读取顺序：
@@ -312,7 +321,7 @@ outputs/vlm_probe/...
 - seed=2000 三套 LIBERO：292/300，97.3%；`libero_10` 尚未运行。
 - Torch 内部 VLM 语言探针：100/100 调用成功，但无可读英文。
 - Dashboard 已恢复，支持七相机和 `/benchmark/` 历史回放。
-- OpenPI JAX 环境与官方 `pi05_libero` checkpoint 正在准备。
+- OpenPI JAX 环境、官方 `pi05_libero` checkpoint 与前置条件编排探针正在服务器后台准备/执行。
 
 实时事实以 [`docs/memory/CURRENT.md`](docs/memory/CURRENT.md) 为准。
 
