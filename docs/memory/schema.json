@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/cosmorithm/pi05-libero-reproduction/docs/memory/schema.json",
+  "title": "Pi0.5-LIBERO project memory event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "time",
+    "event",
+    "status",
+    "summary",
+    "evidence",
+    "commit",
+    "tags"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 8,
+      "pattern": "^evt-[A-Za-z0-9-]+$"
+    },
+    "time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "event": {
+      "type": "string",
+      "enum": [
+        "task_started",
+        "task_finished",
+        "experiment_completed",
+        "incident",
+        "decision",
+        "environment_changed",
+        "handoff",
+        "open_question"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "planned",
+        "preparing",
+        "running",
+        "complete",
+        "failed",
+        "blocked"
+      ]
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "commit": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    }
+  }
+}

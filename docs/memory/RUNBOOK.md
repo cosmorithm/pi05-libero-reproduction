@@ -65,8 +65,19 @@ curl -4 -I https://storage.googleapis.com/openpi-assets/
 
 每次实验或环境变化后：
 
-1. 在 `docs/memory/events.jsonl` 追加事件。
+1. 使用 CLI 追加事件：
+
+```bash
+./.venv/bin/python scripts/project_memory.py add-event \
+  --event environment_changed \
+  --status complete \
+  --summary "说明发生了什么" \
+  --evidence logs/example.log \
+  --tag environment
+```
+
 2. 更新 `docs/memory/CURRENT.md` 的已验证状态。
 3. 新实验追加到 `docs/memory/EXPERIMENTS.md`。
 4. 新决策或风险更新 `DECISIONS.md` / `OPEN_QUESTIONS.md`。
 5. 同步 `README.md` 和根目录 `PROJECT_MEMORY.md` 的入口链接。
+6. 运行 `./.venv/bin/python scripts/validate_project_memory.py`。

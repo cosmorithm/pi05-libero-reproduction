@@ -11,6 +11,8 @@
 4. `OPEN_QUESTIONS.md`：尚未解决的问题和风险。
 5. `RUNBOOK.md`：可直接复制执行的命令。
 6. `events.jsonl`：机器可读的追加式事件流。
+7. `schema.json`：事件字段和枚举值的机器可读 schema。
+8. `templates/`：实验记录和会话交接模板。
 
 ## 维护原则
 
@@ -44,6 +46,20 @@
 ```bash
 ./.venv/bin/python scripts/validate_project_memory.py
 ```
+
+追加规范事件：
+
+```bash
+./.venv/bin/python scripts/project_memory.py add-event \
+  --event experiment_completed \
+  --status complete \
+  --summary "一句话说明结果" \
+  --evidence outputs/experiment/status.json \
+  --tag experiment-name
+```
+
+新增实验或交接会话时，复制 `templates/experiment.md` 或
+`templates/handoff.md`，不要直接修改模板本身。
 
 ## 事件格式
 

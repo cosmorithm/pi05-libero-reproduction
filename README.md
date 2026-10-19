@@ -171,9 +171,23 @@ screen -S libero-web -X quit
 - [`OPEN_QUESTIONS.md`](docs/memory/OPEN_QUESTIONS.md)：未解决问题和风险
 - [`RUNBOOK.md`](docs/memory/RUNBOOK.md)：可执行命令
 - [`events.jsonl`](docs/memory/events.jsonl)：机器可读的追加式事件流
+- [`schema.json`](docs/memory/schema.json)：事件 schema
+- [`templates/`](docs/memory/templates/)：实验和交接模板
 
 维护规则见 [`docs/memory/README.md`](docs/memory/README.md)。根目录
 [`PROJECT_MEMORY.md`](PROJECT_MEMORY.md) 保留历史叙事，不再承担唯一的实时状态来源。
+
+追加事件和校验：
+
+```bash
+./.venv/bin/python scripts/project_memory.py add-event \
+  --event environment_changed \
+  --status complete \
+  --summary "一句话说明发生了什么" \
+  --evidence logs/example.log \
+  --tag environment
+./.venv/bin/python scripts/validate_project_memory.py
+```
 
 ### π0.5 真实策略模式
 
