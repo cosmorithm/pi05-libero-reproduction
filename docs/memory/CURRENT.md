@@ -1,6 +1,6 @@
 # 当前状态
 
-> 最后核验：2026-10-19 20:07 CST
+> 最后核验：2026-10-19 20:27 CST
 > 维护规则：这里只放已验证事实；正在进行的步骤写到 `events.jsonl`。
 
 新会话入口是根目录 [`README.md`](../../README.md) 的“新会话从这里开始”；
@@ -13,8 +13,9 @@
 - 当前主机名：`autodl-container-3f5d4d8d63-18907193`
 - GPU：NVIDIA GeForce RTX 4090 D，24 GB
 - 项目根目录：`/root/autodl-tmp/pi05-libero-reproduction`
-- 正式 LeRobot 环境：`.venv`
-- OpenPI JAX 环境：`.venv-openpi`，正在准备
+- 正式 LeRobot 环境：`.venv`（已验证；不得为 OpenPI 安装过程改写其 PyTorch 版本）
+- 原始 OpenPI JAX 环境：`.venv-openpi`（完整 editable install 仍在解析依赖，尚未完成）
+- 后续 OpenPI JAX 环境：`.venv-openpi-lean`（已批准、尚未创建；只服务于 JAX VLM 探针）
 - OpenPI 源码：`third_party/openpi`，固定 commit
   `215abfb217dbac7d5f1273282331b9b1866c0479`
 
@@ -73,14 +74,16 @@
 - Token 只存在于项目根目录 `.dashboard_token`，不写入文档或 Git。
 - Dashboard 在模型加载阶段已增加不确定进度动画和加载秒数。
 - 官方 checkpoint `gs://openpi-assets/checkpoints/pi05_libero/` 已通过服务器 IPv4 下载完成，下载日志含 `OPENPI_CHECKPOINT_DOWNLOAD_COMPLETE`；目标目录约 12 GiB。
-- `openpi-setup` 仍在安装 `.venv-openpi` 依赖；20:07 的进程与 I/O 核验表明仍在下载写入，尚未出现退出码。pip 正在解析 OpenPI/JAX 的候选依赖，暂未完成 import 验证。
-- `openpi-jax-probe` 是已脱离终端的前置条件编排器：当前只等待安装结束；随后会自动顺序运行翻转/未翻转 pilot 及 100 题 JAX 直接 VLM 探针。尚未产出任何 JAX 模型输出，不应提前下结论。
+- `openpi-setup` 仍在安装完整 `.venv-openpi` 依赖；20:15 的核验显示其仍在逐个解析/下载 TensorStore 候选版本，尚未出现退出码、也尚未通过任何 JAX import。
+- 已决定不向已验证的 LeRobot `.venv` 写入 OpenPI 的完整依赖树：OpenPI 固定 `torch==2.7.1`，而现有可复现实验使用 `torch==2.11.0+cu128`。下一步改为独立 `.venv-openpi-lean`，通过受控最小依赖集运行 JAX VLM 探针。
+- `openpi-jax-probe` 仍是已脱离终端的前置条件编排器；在精简环境创建并通过 import 前不会开始模型加载。之后将自动顺序运行翻转/未翻转 pilot 及 100 题 JAX 直接 VLM 探针。尚未产出任何 JAX 模型输出，不应提前下结论。
 - seed=3000 的完整评测在执行前已按优先级延期，待 JAX 探针后再决定是否恢复。
 - 阶段性证据与边界说明：`reports/OpenPI-JAX-阶段状态报告-2026-10-19.md`。
 
 ## 下一步
 
-1. 等待 `openpi-setup` 完成，检查 `jax`、`flax`、`openpi`、`orbax` import 与退出码。
-2. 读取 `openpi-jax-probe` 的 flip / no-flip pilot；成功后由编排器继续执行 100 题。
-3. JAX 100 题批量完成后生成可追溯报告并推送，不将其与已有 Torch 消融混为一谈。
-4. 对 `libero_10` seed=2000 结束结果做视频/状态核验并更新多 seed 结论。
+1. 将 JAX 探针迁移为独立 `.venv-openpi-lean`；不更改 `.venv`、其 PyTorch 2.11 或 LIBERO 复现路径。
+2. 用真实 import 核验 `jax`、`flax`、`openpi`、`orbax`，并确认可恢复 `pi05_libero` checkpoint。
+3. 读取 `openpi-jax-probe` 的 flip / no-flip pilot；成功后由编排器继续执行 100 题。
+4. JAX 100 题批量完成后生成可追溯报告并推送，不将其与已有 Torch 消融混为一谈。
+5. 对 `libero_10` seed=2000 结束结果做视频/状态核验并更新多 seed 结论。

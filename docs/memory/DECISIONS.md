@@ -8,6 +8,7 @@
 | D004 | 2026-10-19 | Dashboard 使用 token 鉴权，token 不进入 Git 或聊天输出 | Dashboard 能启动仿真，必须避免公开控制面 | 用户必须从 `.dashboard_token` 获取 token |
 | D005 | 2026-10-19 | benchmark 回放嵌入 Dashboard，而不是再占一个公网端口 | 当前只有一个确认可用的 8443→6006 映射 | 历史 MP4 和实时控制台共用一个入口 |
 | D006 | 2026-10-19 | 建立 `docs/memory/` 结构化记忆系统 | 单个叙事文件会随项目增长而过时 | 当前状态、实验、决策、问题、命令分离维护 |
+| D007 | 2026-10-19 | OpenPI JAX VLM 探针使用独立 `.venv-openpi-lean`，不修改现有 `.venv` | OpenPI 完整依赖锁定 `torch==2.7.1`；LeRobot 基线已用 `torch==2.11.0+cu128` 验证 | 可复现的 LIBERO 环境保持不变；精简环境只安装探针必要依赖并复用同一张 GPU/CUDA 驱动 |
 
 ## 变更规则
 
