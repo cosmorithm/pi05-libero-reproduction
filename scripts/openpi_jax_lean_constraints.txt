@@ -1,0 +1,4 @@
+# OpenPI's uv resolver fixes these two versions. Pinning them avoids pip walking
+# through dozens of TensorStore candidates in the isolated probe environment.
+ml-dtypes==0.4.1
+tensorstore==0.1.74
