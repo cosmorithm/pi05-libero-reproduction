@@ -471,3 +471,44 @@ Pi0.5 单任务真实推理和七视角 Web 控制已经在当前持久化项目
 
 部署细节、当前状态和后续任务持续记录在 [`PROJECT_MEMORY.md`](PROJECT_MEMORY.md)。新会话优先阅读该文件和 `outputs/smoke/report.json`。
 
+## Pi0.5 内部 VLM 语言探针（2026-10-19）
+
+这是一项**消融实验**，不是正常的 Pi0.5 策略评测：脚本加载相同的已部署 checkpoint，只调用内部
+`PaliGemmaForConditionalGenerationWithPiGemma.generate()`；300M action expert、flow-matching 动作采样、动作反归一化和环境 step 均不参与。
+
+正式实验固定同一张 `outputs/smoke/image.png`（`agentview`）作为视觉上下文，按 checkpoint 的真实 VLM 规格而非原始仿真帧规格运行：原始相机帧为 256×256，策略内部 VLM 为 224×224、14px patch、256 个 image token。提示模板为：
+
+```text
+<image>answer en {question}
+```
+
+共 100 个英文问题：视觉理解 35、一般语言 35、机器人推理/操作 30；使用贪心解码，`max_new_tokens=32`。结果为 100/100 次接口调用成功、0 错误、100 条不同的 token 串，但清洗后的英文词数和 ASCII 英文字母率均为 0，未得到任何可读英文回答。它表明这个 VLA 微调 checkpoint 的内部 VLM 不应被拆出当聊天式 VLM/LLM 使用；**不**影响正常 `sample_actions` 路径的 LIBERO 392/400（98.0%）基线，也不能单凭此断言预训练 PaliGemma 完全没有知识。
+
+可复现命令：
+
+```bash
+cd /root/autodl-tmp/pi05-libero-reproduction
+
+# 首次仅下载 tokenizer/processor 小文件；需要已获得 gated repo 许可并在服务器 HF 登录。
+./scripts/download_paligemma_processor.sh
+
+.venv/bin/python scripts/probe_pi05_vlm_language.py \
+  --checkpoint checkpoints/lerobot-pi05-libero-finetuned \
+  --image outputs/smoke/image.png \
+  --processor assets/paligemma-processor \
+  --output-dir outputs/vlm_probe/full_100_20261019 \
+  --limit 100 \
+  --max-new-tokens 32
+```
+
+原始逐题输出（包括 token id、问题、prompt、文本、耗时和自动指标）位于：
+
+```text
+outputs/vlm_probe/full_100_20261019/results.jsonl
+```
+
+其 SHA-256 为 `95ef03885b1785bf0b2109ebf77f7d1c39d12e87441e3c508c8f3b5c238728c3`。详见：
+
+- `reports/pi05-vlm-language-probe-2026-10-19.md`
+- `reports/Pi05-VLM-语言探针报告-2026-10-19.pdf`
+

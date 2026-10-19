@@ -114,6 +114,16 @@ python scripts/smoke_libero.py --suite libero_spatial --task-id 0 --seed 7 --ste
 cat outputs/smoke/report.json
 ```
 
+### Pi0.5 内部 VLM 语言探针（2026-10-19）
+
+- 目的：验证“将 Pi0.5 的 action 部分绕开后，内部 PaliGemma 流能否作为普通 VLM/LLM 回答问题”。这不是官方策略接口，不用于评价机器人动作能力。
+- 实现：新增 `scripts/probe_pi05_vlm_language.py`，只调用 `policy.model.paligemma_with_expert.paligemma.generate()`；明确不调用 `gemma_expert`、flow-matching sampler、动作输出或环境 step。新增 `scripts/download_paligemma_processor.sh`，仅在服务器通过 `hf-mirror.com` 下载 PaliGemma tokenizer/processor 小文件，不下载 base model 权重。
+- 重要规格：LIBERO 相机原始画面是 256×256，但 checkpoint 的 `image_resolution` 与实际 SigLIP VLM 规格是 224×224、patch 14、256 个 image tokens。早期探针将原始 256px 帧直接输入导致 SigLIP `324 vs 256` position embedding error；这只是新探针的输入适配错误，正常 `sample_actions` 基线一直遵循内部 224px 预处理，因此不受影响。
+- 最终正式协议：固定 `outputs/smoke/image.png` agentview（SHA-256 `762a2e30…`），prompt `<image>answer en {question}`，贪心解码，`max_new_tokens=32`。100 个英文问题：视觉理解 35、一般语言 35、机器人推理 30。注意一般语言题仍保留固定视觉上下文，不是纯文本 LLM 基准。
+- 结果：100/100 接口调用成功、0 error、总墙钟 152.33 秒（冷加载约两分钟）；加载后平均每题 0.320 秒。每题均生成 32 token，100 条完成文本均不同；所有样本的清洗英文词数为 0、ASCII 英文字母率为 0。直接 token 解码是非自然语言字符串，不能用于 VQA/chat。
+- 结论边界：支持“该已部署 VLA 微调 checkpoint 的直接文本 logit 分布在此受控探针下不再对齐自然语言”；不支持“预训练 PaliGemma 完全没有知识”或“正常 Pi0.5 策略无效”。既有 392/400（98.0%）LIBERO baseline 使用另一条正常 `sample_actions` 策略路径，不受此次消融影响。
+- 输出：`outputs/vlm_probe/full_100_20261019/{manifest,status,results}.jsonl`（results SHA-256 `95ef03885b1785bf0b2109ebf77f7d1c39d12e87441e3c508c8f3b5c238728c3`）；报告为 `reports/pi05-vlm-language-probe-2026-10-19.md` 与 `reports/Pi05-VLM-语言探针报告-2026-10-19.pdf`。
+
 ## 下一步
 
 1. 对 400 episode 完整基线增加多 seed，并保存/分析 8 个失败实例；不要把固定 seed 98.0% 直接当成泛化或真机性能。
