@@ -1,37 +1,293 @@
 # Pi0.5-LIBERO Reproduction
 
-## 新会话从这里开始
+## README 总入口：完整操作接口
 
-如果你是一个接手本项目的新 AI，先不要直接假设旧状态仍然成立。按下面顺序启动：
+这份 README 是项目唯一的对话启动器。新的 AI 或人类接手时，如果只看到
+“读一下 README.md”，按本节顺序执行即可；下面的详细章节是补充参考。
 
-1. 阅读长期记忆：
-   - [`docs/memory/CURRENT.md`](docs/memory/CURRENT.md)：当前已验证状态
-   - [`docs/memory/EXPERIMENTS.md`](docs/memory/EXPERIMENTS.md)：实验台账
-   - [`docs/memory/OPEN_QUESTIONS.md`](docs/memory/OPEN_QUESTIONS.md)：未解决问题
-   - [`docs/memory/RUNBOOK.md`](docs/memory/RUNBOOK.md)：可执行命令
-2. 连接服务器并自行核验：
+### 1. 新会话启动检查
+
+先阅读长期记忆，不要把旧结论当作实时状态：
+
+- [`docs/memory/CURRENT.md`](docs/memory/CURRENT.md)：当前已验证状态
+- [`docs/memory/EXPERIMENTS.md`](docs/memory/EXPERIMENTS.md)：实验台账
+- [`docs/memory/OPEN_QUESTIONS.md`](docs/memory/OPEN_QUESTIONS.md)：未解决问题
+- [`docs/memory/DECISIONS.md`](docs/memory/DECISIONS.md)：关键决策
+- [`docs/memory/RUNBOOK.md`](docs/memory/RUNBOOK.md)：命令手册
+
+然后自行核验服务器：
 
 ```bash
 ssh pi05-4090d
 cd /root/autodl-tmp/pi05-libero-reproduction
+hostname
 git status --short
 git log -8 --oneline
 screen -ls
 nvidia-smi
 cat outputs/benchmark/pi05-libero-seed2000/status.json 2>/dev/null || true
+tail -80 logs/dashboard.log 2>/dev/null || true
 ```
 
-3. 不要只依赖 README 或旧记忆：检查实际 output、日志、screen 和 Git 状态。
-4. 不要执行 `git reset --hard`、`git checkout --`、`rm -rf`，不要删除 checkpoint、
-   assets、cache、outputs 或正在运行的 screen。
-5. 不要停止正在运行的任务，除非日志明确不可恢复或用户明确要求。
-6. 不要输出、提交或索取 Hugging Face token、Dashboard token、SSH 私钥或任何密钥。
-7. 开始任务前先读 [`docs/memory/README.md`](docs/memory/README.md)，完成后追加
-   `docs/memory/events.jsonl` 并更新 `CURRENT.md` / `EXPERIMENTS.md`。
+### 2. 固定入口与目录
 
-当前项目状态摘要：seed=1000 四套 LIBERO 已完成 392/400；seed=2000 三套已完成
-292/300；Torch VLM 语言探针已完成；OpenPI JAX `pi05_libero` 环境和 checkpoint
-正在准备。实时状态以 `docs/memory/CURRENT.md` 为准。
+```text
+SSH alias : pi05-4090d
+SSH       : root@connect.westb.seetacloud.com:13591
+Project   : /root/autodl-tmp/pi05-libero-reproduction
+LeRobot   : .venv
+OpenPI JAX: .venv-openpi
+Dashboard : 容器 0.0.0.0:6006，公网 8443
+Outputs   : outputs/
+Logs      : logs/
+Reports   : reports/
+Memory    : docs/memory/
+```
+
+主机名、端口和公网映射可能随容器变化；每次先用 `hostname`、`screen -ls` 和
+`curl /healthz` 核验，不要只依赖历史地址。
+
+### 3. SSH 与正式 LeRobot 环境
+
+```bash
+ssh pi05-4090d
+cd /root/autodl-tmp/pi05-libero-reproduction
+source .venv/bin/activate
+export LIBERO_CONFIG_PATH=$PWD/home/.libero
+export HF_HOME=$PWD/cache/huggingface
+export HF_ENDPOINT=https://hf-mirror.com
+export HF_HUB_DISABLE_XET=1
+export MUJOCO_GL=egl
+```
+
+最小仿真检查：
+
+```bash
+python scripts/smoke_libero.py \
+  --suite libero_spatial \
+  --task-id 0 \
+  --seed 7 \
+  --steps 80 \
+  --action-mode demo
+cat outputs/smoke/report.json
+```
+
+### 4. Benchmark CLI
+
+单 suite：
+
+```bash
+./.venv/bin/python scripts/benchmark_libero.py \
+  --suites libero_spatial \
+  --n-episodes 10 \
+  --seed 2000 \
+  --output-root outputs/benchmark/pi05-libero-seed2000
+```
+
+完整四 suite：
+
+```bash
+./.venv/bin/python scripts/benchmark_libero.py \
+  --suites libero_spatial,libero_object,libero_goal,libero_10 \
+  --n-episodes 10 \
+  --seed 2000 \
+  --output-root outputs/benchmark/pi05-libero-seed2000
+```
+
+结果位置：
+
+```text
+outputs/benchmark/pi05-libero/          # seed=1000 完整 400 episode
+outputs/benchmark/pi05-libero-seed2000/ # seed=2000 当前三 suite 结果
+summary.json / summary.csv / summary.md
+<suite>/eval_info.json
+<suite>/videos/<suite>_<task>/eval_episode_<n>.mp4
+```
+
+runner 会跳过已有完整 `eval_info.json` 的 suite；需要强制重跑时加 `--force`。
+
+### 5. Dashboard UI 和 HTTP 接口
+
+服务启动、健康检查和 token 读取：
+
+```bash
+cd /root/autodl-tmp/pi05-libero-reproduction
+screen -dmS libero-web bash -lc './scripts/start_dashboard.sh >> logs/dashboard.log 2>&1'
+screen -ls
+curl http://127.0.0.1:6006/healthz
+cat .dashboard_token
+```
+
+停止服务：
+
+```bash
+screen -S libero-web -X quit
+```
+
+本机访问 Dashboard 时不要把 token 写入 Git、README、截图或聊天：
+
+```bash
+TOKEN=$(ssh pi05-4090d cat /root/autodl-tmp/pi05-libero-reproduction/.dashboard_token)
+open "https://u580081-8d63-18907193.westb.seetacloud.com:8443/?token=${TOKEN}"
+```
+
+HTTP 接口：
+
+| 接口 | 方法 | 用途 | token |
+| --- | --- | --- | --- |
+| `/` | GET | 七相机 Dashboard | 页面可不带，API 需要 |
+| `/healthz` | GET | 健康检查 | 否 |
+| `/api/status` | GET | 运行状态、进度、GPU | 是 |
+| `/api/run` | POST | 启动 idle/demo/pi05 episode | 是 |
+| `/api/stop` | POST | 停止当前 episode | 是 |
+| `/frames/image*.png` | GET | 七路相机帧 | 是 |
+| `/benchmark/` | GET | 历史 MP4 回放 | 是 |
+
+API 示例：
+
+```bash
+TOKEN=$(cat .dashboard_token)
+curl "http://127.0.0.1:6006/api/status?token=$TOKEN"
+curl -X POST "http://127.0.0.1:6006/api/run?token=$TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"suite":"libero_spatial","task_id":0,"seed":7,"steps":12,"action_mode":"demo"}'
+curl -X POST "http://127.0.0.1:6006/api/stop?token=$TOKEN"
+```
+
+`pi05` 真实模式每次启动会重新加载约 7GB checkpoint，实测约 123 秒；加载阶段
+进度条显示动态加载动画和已用秒数。
+
+### 6. OpenPI JAX 接口
+
+源码固定到 `215abfb217dbac7d5f1273282331b9b1866c0479`，位于
+`third_party/openpi`。当前独立环境为 `.venv-openpi`。
+
+安装依赖：
+
+```bash
+cd /root/autodl-tmp/pi05-libero-reproduction
+screen -dmS openpi-setup bash -lc '
+  cd /root/autodl-tmp/pi05-libero-reproduction &&
+  .venv-openpi/bin/python -m pip install \
+    -e third_party/openpi/packages/openpi-client \
+    -e third_party/openpi
+'
+screen -ls
+```
+
+服务器访问 GCS 必须显式使用 IPv4：
+
+```bash
+curl -4 -I https://storage.googleapis.com/openpi-assets/
+```
+
+官方 checkpoint 下载：
+
+```bash
+screen -dmS openpi-assets bash -lc '
+  cd /root/autodl-tmp/pi05-libero-reproduction &&
+  exec ./scripts/download_openpi_checkpoint_server.sh > logs/openpi-assets.log 2>&1
+'
+tail -f logs/openpi-assets.log
+```
+
+目标目录：
+
+```text
+checkpoints/openpi-pi05-libero/params/
+checkpoints/openpi-pi05-libero/assets/physical-intelligence/libero/norm_stats.json
+```
+
+VLM 探针先跑最小 pilot，确认环境后再跑 100 题：
+
+```bash
+cd /root/autodl-tmp/pi05-libero-reproduction
+XLA_PYTHON_CLIENT_PREALLOCATE=false \
+XLA_PYTHON_CLIENT_MEM_FRACTION=0.60 \
+.venv-openpi/bin/python scripts/probe_pi05_vlm_language_jax.py \
+  --checkpoint checkpoints/openpi-pi05-libero \
+  --image outputs/smoke/image.png \
+  --output-dir outputs/vlm_probe/jax_pilot_20261019 \
+  --limit 1 \
+  --max-new-tokens 8
+```
+
+### 7. 记忆系统接口
+
+读取顺序：
+
+```text
+docs/memory/CURRENT.md
+docs/memory/EXPERIMENTS.md
+docs/memory/DECISIONS.md
+docs/memory/OPEN_QUESTIONS.md
+docs/memory/RUNBOOK.md
+```
+
+追加事件：
+
+```bash
+cd /root/autodl-tmp/pi05-libero-reproduction
+./.venv/bin/python scripts/project_memory.py add-event \
+  --event experiment_completed \
+  --status complete \
+  --summary "一句话说明结果" \
+  --evidence outputs/your-result/status.json \
+  --tag your-experiment
+```
+
+校验记忆、证据路径和本地 Markdown 链接：
+
+```bash
+./.venv/bin/python scripts/validate_project_memory.py
+```
+
+实验和交接模板：
+
+- [`docs/memory/templates/experiment.md`](docs/memory/templates/experiment.md)
+- [`docs/memory/templates/handoff.md`](docs/memory/templates/handoff.md)
+
+### 8. Git、报告和交付
+
+```bash
+cd /root/autodl-tmp/pi05-libero-reproduction
+git status --short
+git diff --check
+git add <明确列出的文件>
+git commit -m "<说明>"
+git push origin main
+```
+
+正式交付位置：
+
+```text
+reports/<报告>.md
+reports/<报告>.pdf
+outputs/benchmark/...
+outputs/vlm_probe/...
+```
+
+不要提交模型权重、cache、完整视频、token、私钥或临时虚拟环境。
+
+### 9. 安全与任务边界
+
+- 不要执行 `git reset --hard`、`git checkout --` 或 `rm -rf`。
+- 不要删除 checkpoint、assets、cache、outputs 或正在运行的 screen。
+- 不要停止正在运行的 benchmark/训练，除非日志明确显示不可恢复错误或用户明确要求。
+- 不要只凭旧 README 或旧记忆断言当前状态；检查 `git`、`screen`、GPU、output 和日志。
+- 不要把单个 seed 的结果写成泛化结论。
+- 不要把 VLM 直接文本探针结果写成正常 `sample_actions` 策略结果。
+- Dashboard token 只从 `.dashboard_token` 读取，不写入文档、Git、聊天或公开链接。
+
+### 10. 当前状态摘要
+
+- seed=1000 四套 LIBERO：392/400，98.0%。
+- seed=2000 三套 LIBERO：292/300，97.3%；`libero_10` 尚未运行。
+- Torch 内部 VLM 语言探针：100/100 调用成功，但无可读英文。
+- Dashboard 已恢复，支持七相机和 `/benchmark/` 历史回放。
+- OpenPI JAX 环境与官方 `pi05_libero` checkpoint 正在准备。
+
+实时事实以 [`docs/memory/CURRENT.md`](docs/memory/CURRENT.md) 为准。
 
 独立的 LeRobot/PyTorch + LIBERO 仿真复现环境。远端根目录固定为：
 

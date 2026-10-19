@@ -3,6 +3,10 @@
 这套目录用于让人类和 AI 在跨会话、跨容器、跨实验中快速恢复上下文。
 它不是运行日志的替代品，也不是“把所有内容塞进一个文件”的笔记。
 
+根目录 [`README.md`](../../README.md) 是完整操作接口，包含 SSH、环境、
+benchmark、Dashboard HTTP API、OpenPI JAX、Git 和本记忆系统的命令；
+`docs/memory/` 负责保存可长期演进的事实、决策和证据索引。
+
 ## 阅读顺序
 
 1. `CURRENT.md`：当前可验证状态和正在进行的任务。

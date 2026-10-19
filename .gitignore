@@ -16,6 +16,7 @@ third_party/
 # Runtime output
 logs/
 outputs/
+docs/memory/.events.lock
 
 # Python and editor artifacts
 __pycache__/
