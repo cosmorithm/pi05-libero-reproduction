@@ -46,7 +46,8 @@
 | 合计 | 292/300 = 97.3% |
 
 输出：`outputs/benchmark/pi05-libero-seed2000/`  
-注意：`libero_10` 的 seed=2000 尚未运行。
+注意：`libero_10` 的 seed=2000 已于 2026-10-19 18:13 CST 启动，任务账本 ID 为
+`task-libero-seed2000-10`；尚无可作为最终结论的结果。
 
 ### Torch VLM 语言探针
 

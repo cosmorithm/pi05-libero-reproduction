@@ -11,6 +11,23 @@ screen -ls
 nvidia-smi
 ```
 
+## 任务账本（任何写操作前）
+
+除只读检查外，训练、评测、下载、安装、部署、代码/文档修改和报告生成必须先在
+[`TASKS.md`](TASKS.md) 中登记。前台命令优先用包装器，它会自动写入开始和终态：
+
+```bash
+scripts/run_tracked_task.sh \
+  --task-id task-example-001 \
+  --summary "说明目的和范围" \
+  --log logs/example.log \
+  --tag example -- \
+  ./.venv/bin/python scripts/example.py
+```
+
+后台 `screen` 任务先使用 `project_memory.py task start`，结束后用
+`project_memory.py task finish`，并把 `screen` 名称、日志和输出目录作为证据。
+
 ## 正式 LeRobot 环境
 
 ```bash
@@ -65,7 +82,13 @@ curl -4 -I https://storage.googleapis.com/openpi-assets/
 
 每次实验或环境变化后：
 
-1. 使用 CLI 追加事件：
+1. 每项非只读任务先写入 `task start`，进展写 `task update`，结束写 `task finish`：
+
+```bash
+./.venv/bin/python scripts/project_memory.py task list
+```
+
+2. 对实验、环境或决策使用 CLI 追加高层事件：
 
 ```bash
 ./.venv/bin/python scripts/project_memory.py add-event \
@@ -76,8 +99,8 @@ curl -4 -I https://storage.googleapis.com/openpi-assets/
   --tag environment
 ```
 
-2. 更新 `docs/memory/CURRENT.md` 的已验证状态。
-3. 新实验追加到 `docs/memory/EXPERIMENTS.md`。
-4. 新决策或风险更新 `DECISIONS.md` / `OPEN_QUESTIONS.md`。
-5. 同步 `README.md` 和根目录 `PROJECT_MEMORY.md` 的入口链接。
-6. 运行 `./.venv/bin/python scripts/validate_project_memory.py`。
+3. 更新 `docs/memory/CURRENT.md` 的已验证状态。
+4. 新实验追加到 `docs/memory/EXPERIMENTS.md`。
+5. 新决策或风险更新 `DECISIONS.md` / `OPEN_QUESTIONS.md`。
+6. 同步更新 `README.md` 和根目录 `PROJECT_MEMORY.md` 的入口链接。
+7. 运行 `./.venv/bin/python scripts/validate_project_memory.py`。

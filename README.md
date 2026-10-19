@@ -14,6 +14,7 @@
 - [`docs/memory/OPEN_QUESTIONS.md`](docs/memory/OPEN_QUESTIONS.md)：未解决问题
 - [`docs/memory/DECISIONS.md`](docs/memory/DECISIONS.md)：关键决策
 - [`docs/memory/RUNBOOK.md`](docs/memory/RUNBOOK.md)：命令手册
+- [`docs/memory/TASKS.md`](docs/memory/TASKS.md)：所有非只读任务的生命周期规则
 
 然后自行核验服务器：
 
@@ -27,6 +28,32 @@ screen -ls
 nvidia-smi
 cat outputs/benchmark/pi05-libero-seed2000/status.json 2>/dev/null || true
 tail -80 logs/dashboard.log 2>/dev/null || true
+```
+
+### 1.5 任务账本：所有写操作的强制入口
+
+从此处接手后，**纯只读检查除外**，任何会改变项目状态的工作（训练、评测、下载、
+安装、部署、代码/文档修改、报告生成、服务启停）都必须先登记到
+[`docs/memory/TASKS.md`](docs/memory/TASKS.md) 和 `tasks.jsonl`。使用稳定的
+`task-...` ID，并记录命令、日志/输出证据、关键进度和终态。
+
+前台任务使用自动包装器：
+
+```bash
+scripts/run_tracked_task.sh \
+  --task-id task-example-001 \
+  --summary "说明目的和范围" \
+  --log logs/example.log \
+  --tag example -- \
+  ./.venv/bin/python scripts/example.py
+```
+
+后台 `screen` 任务必须先运行 `project_memory.py task start`，结束后运行
+`project_memory.py task finish`。提交 Git 前必须运行：
+
+```bash
+./.venv/bin/python scripts/project_memory.py task list
+./.venv/bin/python scripts/validate_project_memory.py
 ```
 
 ### 2. 固定入口与目录

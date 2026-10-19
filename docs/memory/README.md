@@ -17,6 +17,7 @@ benchmark、Dashboard HTTP API、OpenPI JAX、Git 和本记忆系统的命令；
 6. `events.jsonl`：机器可读的追加式事件流。
 7. `schema.json`：事件字段和枚举值的机器可读 schema。
 8. `templates/`：实验记录和会话交接模板。
+9. `TASKS.md` 与 `tasks.jsonl`：全部会改变项目状态的任务及其生命周期。
 
 ## 维护原则
 
@@ -25,7 +26,9 @@ benchmark、Dashboard HTTP API、OpenPI JAX、Git 和本记忆系统的命令；
 - **证据优先。** 不把“正在运行”当成“已经完成”，不把单个 seed 当成泛化结论。
 - **只记录可复现信息。** 记录 checkpoint revision、commit、seed、协议、输出目录和关键指标。
 - **不记录秘密。** 不写入 SSH 私钥、Hugging Face token、Dashboard token、模型权重或大视频。
-- **不覆盖别人的记录。** 事件流采用追加模式；旧结论被推翻时新增事件说明原因。
+- **不覆盖别人的记录。** 事件流与任务账本都采用追加模式；旧结论被推翻时新增事件说明原因。
+- **任务先于变更。** 除纯只读检查外，开始任务前必须在 `tasks.jsonl` 写入
+  `started`；关键进展写 `updated`；终态写 `finished` 并附证据。
 
 ## 状态标记
 
@@ -40,10 +43,13 @@ benchmark、Dashboard HTTP API、OpenPI JAX、Git 和本记忆系统的命令；
 
 1. 先读 `CURRENT.md`、`EXPERIMENTS.md` 的最近条目和 `OPEN_QUESTIONS.md`。
 2. 用 `RUNBOOK.md` 的命令自行探索，不把旧记忆当作实时状态。
-3. 开始任务前在 `events.jsonl` 追加一条 `task_started` 事件。
-4. 完成任务、失败或改变方向时追加 `task_finished`、`experiment_completed`、`decision` 或 `incident` 事件。
-5. 只更新 `CURRENT.md` 中已经有证据支持的事实。
-6. 同步更新根目录 `README.md` 和 `PROJECT_MEMORY.md` 的入口链接，再提交 Git。
+3. 开始任何会改变项目状态的任务前，在 `tasks.jsonl` 追加 `started` 记录；纯只读
+   检查不登记。具体命令见 [`TASKS.md`](TASKS.md)。
+4. 关键进度写 `updated`；完成、失败或阻塞时追加 `finished`，并附输出或日志。
+5. 对长期有意义的结果、决策或事故，另外在 `events.jsonl` 追加
+   `experiment_completed`、`decision` 或 `incident` 事件。
+6. 只更新 `CURRENT.md` 中已经有证据支持的事实。
+7. 同步更新根目录 `README.md` 和 `PROJECT_MEMORY.md` 的入口链接，再提交 Git。
 
 提交前运行：
 

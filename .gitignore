@@ -17,6 +17,7 @@ third_party/
 logs/
 outputs/
 docs/memory/.events.lock
+docs/memory/.tasks.lock
 
 # Python and editor artifacts
 __pycache__/

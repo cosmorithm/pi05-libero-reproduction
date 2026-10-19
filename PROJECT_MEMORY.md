@@ -5,6 +5,8 @@
 > **结构化长期记忆入口：** [`docs/memory/README.md`](docs/memory/README.md)。
 > 当前可验证状态以 [`docs/memory/CURRENT.md`](docs/memory/CURRENT.md) 为准；
 > 实验台账见 [`docs/memory/EXPERIMENTS.md`](docs/memory/EXPERIMENTS.md)。
+> 所有非只读任务的生命周期以 [`docs/memory/TASKS.md`](docs/memory/TASKS.md) 与
+> `docs/memory/tasks.jsonl` 为准。
 > 本文保留历史叙事，实时状态不应只依赖本文。
 
 ## 项目边界

@@ -1,7 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/cosmorithm/pi05-libero-reproduction/docs/memory/schema.json",
-  "title": "Pi0.5-LIBERO project memory event",
+  "title": "Pi0.5-LIBERO project memory event and task-ledger schema",
+  "description": "The root schema validates events.jsonl. $defs.task_record documents tasks.jsonl.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -73,6 +74,37 @@
         "minLength": 1
       },
       "uniqueItems": true
+    }
+  },
+  "$defs": {
+    "task_record": {
+      "title": "Append-only task lifecycle record",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "task_id",
+        "time",
+        "transition",
+        "status",
+        "summary",
+        "command",
+        "evidence",
+        "commit",
+        "tags"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^taskevt-[A-Za-z0-9-]+$"},
+        "task_id": {"type": "string", "pattern": "^task-[A-Za-z0-9-]+$"},
+        "time": {"type": "string", "format": "date-time"},
+        "transition": {"enum": ["started", "updated", "finished"]},
+        "status": {"enum": ["planned", "preparing", "running", "complete", "failed", "blocked"]},
+        "summary": {"type": "string", "minLength": 1},
+        "command": {"type": ["string", "null"]},
+        "evidence": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+        "commit": {"type": ["string", "null"]},
+        "tags": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}
+      }
     }
   }
 }
