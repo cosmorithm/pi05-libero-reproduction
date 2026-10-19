@@ -17,6 +17,7 @@ import os
 import re
 import sys
 import time
+import traceback
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -335,6 +336,7 @@ def main() -> int:
                     "status": "error",
                     "error_type": type(exc).__name__,
                     "error": str(exc),
+                    "traceback": traceback.format_exc(),
                     "elapsed_s": round(time.perf_counter() - t0, 4),
                 }
             )
