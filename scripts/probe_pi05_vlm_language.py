@@ -267,6 +267,13 @@ def main() -> int:
     processor.image_processor.size = {"height": 256, "width": 256}
     processor.image_processor.crop_size = {"height": 256, "width": 256}
     processor.image_seq_length = expected_image_tokens
+    # This OpenPI port sets the legacy ``image_token_index`` during
+    # construction, while recent Transformers reads ``image_token_id`` in the
+    # generic PaliGemma forward path.  Normal Pi0.5 action inference bypasses
+    # this generic path entirely; the explicit assignment makes this direct
+    # VLM ablation use the same special token emitted by the processor.
+    vlm.config.image_token_id = processor.image_token_id
+    vlm.config.image_token_index = processor.image_token_id
     image = Image.open(args.image).convert("RGB")
 
     metadata = {
@@ -278,6 +285,8 @@ def main() -> int:
         "vlm_class": vlm.__class__.__name__,
         "processor_class": processor.__class__.__name__,
         "vlm_image_size": int(vlm.config.vision_config.image_size),
+        "vlm_image_token_id": int(vlm.config.image_token_id),
+        "processor_image_token_id": int(processor.image_token_id),
         # This OpenPI-compatible PaliGemma config does not expose the newer
         # Transformers ``image_seq_length`` field.  The expected count is
         # recorded explicitly from the Pi0.5 256px/14px geometry instead.
